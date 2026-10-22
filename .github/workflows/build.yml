@@ -51,7 +51,6 @@ jobs:
             video: dummy
     env:
       SDL_VIDEODRIVER: ${{ matrix.video }}
-      SDL_AUDIODRIVER: dummy
       SDL_RENDER_DRIVER: software
     steps:
       - uses: actions/checkout@v6
@@ -91,6 +90,8 @@ jobs:
       - name: Run menu, combat, pause and repeated abort route
         timeout-minutes: 2
         shell: pwsh
+        env:
+          SDL_AUDIODRIVER: dummy
         run: |
           $binary=if($IsWindows){'blaze.exe'}elseif($IsMacOS){'Blaze.app/Contents/MacOS/Blaze'}else{'blaze'}
           $exe=(Resolve-Path "source/build/stage/$binary").Path
@@ -114,6 +115,8 @@ jobs:
         run: ./source/scripts/package-release.ps1 -Version $env:PACKAGE_VERSION -Platform '${{ matrix.platform }}' -StageDirectory source/build/stage
       - name: Launch extracted archive or mounted DMG
         shell: pwsh
+        env:
+          SDL_AUDIODRIVER: dummy
         run: ./source/scripts/check-package.ps1 -Platform '${{ matrix.platform }}'
       - uses: actions/upload-artifact@v7
         with:
