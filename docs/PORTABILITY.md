@@ -1,19 +1,21 @@
 # SDL3 and platform implementation plan
 
 Targets: Windows x86/x64/ARM64, Linux x64/ARM64, macOS ARM64. Native CI now builds,
-checks and packages actual SDL applications. All six native targets pass. Gameplay frames match the Windows
+checks and packages actual SDL applications. All six native targets pass.
+Gameplay frames match the Windows
 reference, and packages launch from extracted archives or a mounted DMG.
 This is headless CI evidence; real graphics/audio/controller and full campaign
 acceptance remain manual. The local Windows build still defaults to Win32.
+
 ## Keep the game and its owners
 
 Preserve the software renderer, 320x240 indexed framebuffer, asset decoders,
 gameplay/RNG, `BlazeApp`, `BlazeWorld`, `BlazeMixer` and `BlazeMedia` callbacks.
 Platform migration changes presentation/devices/files, not recovered game behavior.
-Keep Win32 as the comparison backend until SDL passes the same routes.
+Keep Win32 available as the comparison backend during hardware acceptance.
 Do not add a second writable game state or redesign the renderer.
 
-## Connected batches, in order
+## Integrated subsystems and remaining acceptance
 
 1. **Paths, settings and controls storage.** Shared C storage is integrated in
    both backends: strict numeric loading, exclusive temporary creation, flush and
@@ -30,10 +32,10 @@ Do not add a second writable game state or redesign the renderer.
    matches per Unix path component. Ambiguous matches fail; writes remain exact.
    Startup receives its selected configuration directory explicitly, so user INIs
    retain music/weapon/timing metadata as well as mutable options and scores.
-   Missing INIs are seeded once without overwriting edits. These paths pass
-   Windows Unicode tests and native Mac/Linux case-path tests pass.
+   Missing INIs are seeded once without overwriting edits. Windows Unicode tests
+   and native Mac/Linux case-path tests pass.
 2. **SDL application, window/input/pacing.** SDL 3.4.18 is pinned/checksummed and
-   statically linked in the Windows candidate. Its window/renderer/streaming RGBA
+   statically linked in all six SDL application targets. Its window/renderer/streaming RGBA
    texture, palette expansion, nearest-neighbor scaling, action masks and monotonic
    frame clock are connected. F10 now opens the SDL controls menu, with mouse/
    keyboard editing, legacy key-ID capture, controller selection/button binding,
@@ -79,20 +81,21 @@ Do not add a second writable game state or redesign the renderer.
    [FluidSynth](https://github.com/FluidSynth/fluidsynth),
    [FluidLite](https://github.com/divideconcept/FluidLite),
    [bank author's license](https://github.com/mrbumpy409/GeneralUser-GS/blob/main/documentation/LICENSE.txt).
-4. **Six native applications and packages.** Actual SDL targets and candidate jobs
+4. **Six native applications and packages.** Actual SDL targets and runtime jobs
    are wired for all six architectures. Linux uses adjacent libraries with
    `$ORIGIN`; macOS puts assets in Resources and its dylib in Frameworks with
    `@rpath`. Build trees hard-link immutable assets and seed independent INIs;
    ordinary builds run without `--assets`. Windows x86/x64 are locally verified;
    all six native SDL targets pass CI execution.
-   Run existing fixtures on all targets,
-   then owned bounded platform sessions and manual visible/audio/controller tests.
+   Existing checks and bounded gameplay run on all targets. Next are manual
+   visible/audio/controller sessions and natural campaign acceptance.
    Audit integer overflow/shifts/conversions/alignment and pointer assumptions
    under GCC/Clang/MSVC; add focused coverage only for discovered issues. Windows
    ZIPs keep `blaze.exe`; Linux tar.gz keeps `blaze`; macOS packages `Blaze.app`
    with immutable assets in Resources, icon/Info.plist and user data outside it.
-   Ad-hoc signing, ICNS and mounted-DMG launch validation are wired; this is not notarization. Use runtime
-   artifacts and manual tagged releases only after all real application jobs pass.
+   Ad-hoc signing, ICNS and mounted-DMG launch validation pass; this is not
+   notarization. Runtime artifacts are available from the successful CI run.
+   Tagged releases remain manual and subject to the separate distribution review.
 
 ## Evidence required
 

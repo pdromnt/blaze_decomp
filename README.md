@@ -15,7 +15,7 @@ A complete natural campaign and real display/audio/controller acceptance remain 
 Visual Studio C/C++ tools, Windows SDK and CMake 3.24+:
 
 ```powershell
-./source/scripts/build.ps1 -Architecture x64 -Tests
+./source/scripts/build.ps1 -Architecture x64 -Backend SDL3 -Tests
 ./blaze.exe
 ```
 
@@ -25,7 +25,8 @@ are ignored. An original executable is replaced only after verifying its preserv
 canonical copy. `-NoDeploy` builds/tests without replacing the root executable.
 Rebuilds preserve `dat/Blz.ini`, `dat/BlzScr.ini` and `dat/BlzCtrl.ini`.
 
-To build the SDL3 candidate, add `-Backend SDL3`. It fetches checksum-pinned SDL
+`-Backend SDL3` selects the cross-platform backend used by all CI artifacts.
+Omitting it selects the independent Win32 comparison backend. SDL fetches checksum-pinned SDL
 3.4.18, FluidSynth 2.6.1 and the GeneralUser GS instrument bank, and shares the
 same game/settings owners. Music timbre differs from the Windows system synth;
 listening acceptance remains open. Use `-NoDeploy` to keep root `blaze.exe` on

@@ -5,6 +5,11 @@ run. Extract the whole archive; the executable needs its adjacent assets/library
 These are development test builds. Automated checks do not establish a complete
 campaign or hardware/audio acceptance.
 
+All CI runtime artifacts use SDL3. In the development checkout, root blaze.exe
+remains the preserved Win32 comparison unless explicitly replaced by an SDL build.
+The local SDL executable is source/build/windows-x64-sdl3/bin/blaze.exe; run it
+from that folder with its dependencies and assets in place.
+
 - Windows: extract the ZIP and run blaze.exe. x86/x64/ARM64 are separate builds.
 - Linux: extract the tar.gz and run ./blaze. Do not copy just the executable.
 - macOS Apple Silicon: open the DMG and copy Blaze.app to your Applications folder

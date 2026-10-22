@@ -33,11 +33,12 @@ include pristine INI defaults, original assets, resources, dependency licenses a
 corresponding synth sources, excluding player controls and private recovery.
 Architecture/identity/dependency checks run before packaging into source/dist/.
 
-## Linux/macOS application candidates
+## Linux/macOS applications
 
 Use native C11/C++ tools and CMake 3.24+. Linux SDK dependencies are listed in
-.github/workflows/build.yml. These real application paths are enabled but have
-not yet built/run on a native Unix host:
+.github/workflows/build.yml. Linux x64/ARM64 and macOS ARM64 have passed native
+CI builds, checks, deterministic gameplay and packaged launches. Real display,
+audio and controller acceptance remains manual:
 
 ```sh
 cmake -S source -B source/build/native -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DBLAZE_PLATFORM=SDL3

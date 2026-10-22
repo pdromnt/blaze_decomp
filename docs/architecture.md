@@ -7,8 +7,9 @@
   `02332ea9c4746ce6255f044097c4b095f44c539f265927a3ca76ca01737fa74d`.
 - `game-recomp/recomp/` and its x86 differential tools (private): preserved extraction/diagnostic code.
   No whole-game hybrid or CPU/x87 runtime was implemented at takeover.
-- `source/`: ordinary C candidate; `blaze-native` links only `blaze_game` and
-  Win32 presentation/input and WinMM audio libraries. No generated execution, guest memory,
+- `source/`: ordinary C game; `blaze-native` links native game/settings owners and
+  either SDL3 presentation/input/audio with shared FluidSynth, or the independent
+  Win32/WinMM comparison backend. No generated execution, guest memory,
   general x87 mechanism, guest ABI dispatch, or fallback to the original.
 
 The old translation/fallback strategy applies only to oracle experiments.
@@ -21,7 +22,8 @@ and current `BlazeLevel`. Every archive owns one byte buffer and one metadata
 array. Sprite pixel offsets reference that buffer; there are no serialized
 pointer fields or mutable guest mirrors. A replacement is parsed before the old
 owner is released. Closing the app releases level arrays/archives, screen, font
-and ROP. The backend owns HWND/HDC lifetimes. No callbacks survive destruction.
+and ROP. The backend owns SDL window/renderer/texture lifetimes, or HWND/HDC
+lifetimes in the Win32 comparison. No callbacks survive destruction.
 
 Recovered native path replaces file loading/registration (`0x424d80`, `0x424ec0`,
 `0x424a40`), archive release (ownership formerly split across pattern slots and
@@ -56,7 +58,8 @@ in `dat/BlzCtrl.ini`. An explicit `--settings directory` isolates the three
 files; hidden runs otherwise disable persistence.
 Full-screen uses borderless monitor bounds with aspect-preserving scale or a
 centered 320x240 image, replacing legacy DirectDraw exclusive mode switches.
-The two scaled full-screen entries share the GDI backend; original exclusive
+The two scaled full-screen entries share aspect-preserving presentation (SDL
+renderer, or GDI in the comparison backend); original exclusive
 mode/driver parity is not claimed. Startup remains windowed by policy.
 
 Cadence now reads `[Enh] Time` as a millisecond interval, as WinMain `0x402920`
@@ -111,8 +114,9 @@ reset/unprepare/device close and bank destruction, including partial-open failur
 Muted diagnostics alone mix synchronously. Neither PCM service nor frame
 submission waits for music. Actual driver transitions can still leave a music gap.
 
-The SDL backend now owns `BlazeSdlAudio`: one `BlazeSdlPcm` and the independently
-retained Windows MIDI worker. It does not link `windows_audio.c` or enter WaveOut.
+The SDL backend owns `BlazeSdlAudio`: one `BlazeSdlPcm` and one portable
+`BlazeSdlMusic` worker using FluidSynth. It does not link `windows_audio.c` or
+`windows_music.c`, enter WaveOut/MCI, or borrow a Windows MIDI owner.
 The PCM stream requests mono S16/22050 input and SDL converts for the device.
 Its callback mixes bounded 256-sample chunks without touching game state or I/O;
 the stream lock serializes mixer mutation. Sound callbacks take that same lock.
@@ -120,14 +124,15 @@ Silence clears voices and queued stream data without taking a device lock under
 the stream lock. Destroying the stream stops/joins callbacks and closes its device
 before bank release. Partial opens are closable. A submission failure propagates
 through an atomic flag to the application. Muted diagnostics alone keep the old
-synchronous 256-sample pump. The controls editor accepts an idle callback/context;
-it no longer requires a `BlazeWindowsAudio` owner.
+synchronous 256-sample pump. SDL F10 uses the in-window controls editor while both
+audio owners continue independently; the Win32 editor retains its idle callback.
 
 Unbound-stream tests compare exact multirate/clipped samples and all voice state
 with the existing mixer across callback chunk boundaries. Dummy and silent WASAPI
 checks cover 400 ms without main pumping, queued-sound reset and six active
-close/reopen cycles on x64/x86. This verifies transport, not audible balance or a
-portable MIDI synth. Music request/EOF semantics remain those of the existing worker.
+close/reopen cycles on x64/x86. Portable MIDI has separate FluidSynth lifecycle,
+tempo/controller and shipped-song checks described below. These tests do not
+establish audible quality or real-device acceptance on every platform.
 
 The worker alone owns playback state. `BlazeMusicStatus` is a read-only publication
 for completion/diagnostics, protected by the same short lock. Submission intent
@@ -669,7 +674,7 @@ awards, ending ranking/unlock, mixed option writes, unknown-key preservation,
 separate controls, full-screen preference retention and locked-file recovery. This
 stores progress only, not a resumable campaign or mid-mission state.
 
-The optional `BLAZE_PLATFORM=SDL3` application uses the same `BlazeApp` and game
+The `BLAZE_PLATFORM=SDL3` application used by all CI runtime artifacts shares `BlazeApp` and the game
 renderer. A streaming RGBA texture expands the authoritative indexed framebuffer;
 no parallel game-state representation exists. SDL owns its window, renderer,
 texture and current joystick; disconnect/applied device changes close that joystick.
@@ -678,7 +683,9 @@ unmapped IDs fail visibly instead of being ignored. SDL does not capture the
 mouse or accept unfocused gameplay input. Windowed/letterboxed/centered display
 and monotonic `Time` deadlines retain the existing simulation cadence. MIDI and
 F10 now use SDL-compatible owners described below. Unix application targets are
-enabled; their native build/run validation remains open. Win32 remains available.
+enabled and pass native checks, deterministic gameplay and packaged launches on
+Linux x64/ARM64 and macOS ARM64, alongside Windows x86/x64/ARM64. Real hardware
+and full-campaign acceptance remain open. Win32 remains available for comparison.
 
 Live Ghidra audit of the remaining legacy keys (2026-10-21):
 - `Clear`: 0x401e8c reads it once into application offset 0x98. No subsequent
