@@ -8,7 +8,7 @@ pause, controls and score/unlock persistence are connected.
 Windows x86/x64 are locally tested. Windows ARM64 is configured for native CI;
 Linux x64/ARM64 and macOS ARM64 currently build core checks only. Their playable
 SDL3 backend is in progress. A Windows SDL3 candidate now handles presentation,
-keyboard/joystick input and pacing while retaining WinMM audio and the Windows
+keyboard/joystick input, PCM output and pacing while retaining Windows MIDI and the
 F10 editor. A complete natural campaign and physical
 controller acceptance remain open.
 
@@ -30,7 +30,7 @@ Rebuilds preserve `dat/Blz.ini`, `dat/BlzScr.ini` and `dat/BlzCtrl.ini`.
 To build the SDL3 candidate, add `-Backend SDL3`. It fetches checksum-pinned SDL
 3.4.18 and shares the same game/settings owners. Use `-NoDeploy` to keep root
 `blaze.exe` on the stable Win32 backend. SDL3 is not yet a Unix runtime: portable
-audio/MIDI, the F10 editor and installed-user paths remain to be connected.
+MIDI, the F10 editor and installed-user paths remain to be connected.
 
 Arrow keys move/navigate, **Z** fires/confirms, **X** uses the ship ability/cancels,
 **Esc** pauses, **F2** returns to title, **F9** exits and **F10** edits controls.

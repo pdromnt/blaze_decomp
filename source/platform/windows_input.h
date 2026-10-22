@@ -117,7 +117,7 @@ static void controls_capture(ControlsEditor *e,int key) {
     else if(key!=VK_ESCAPE && key!=VK_F10 && key>0 && key<256)e->value.keys[e->capture]=key;
     controls_label(e->keys[e->capture],e->value.keys[e->capture]);e->capture=-1;
 }
-static int controls_edit(HWND parent,BlazeControls *value,BlazeWindowsAudio *audio) {
+static int controls_edit(HWND parent,BlazeControls *value,void (*idle)(void *),void *context) {
     ControlsEditor e={0};HWND window;MSG msg;
     e.value=*value;window=controls_create(parent,&e);if(!window)return -1;
     EnableWindow(parent,FALSE);ShowWindow(window,SW_SHOW);SetFocus(e.keys[0]);
@@ -132,7 +132,7 @@ static int controls_edit(HWND parent,BlazeControls *value,BlazeWindowsAudio *aud
         }
         /* Simulation is paused, but active SFX and MIDI keep their existing
            owners and continue pumping while the user edits bindings. */
-        blaze_windows_audio_pump(audio);
+        if(idle)idle(context);
         if(!e.done)MsgWaitForMultipleObjects(0,NULL,FALSE,20,QS_ALLINPUT);
     }
     DestroyWindow(window);if(IsWindow(parent)) {EnableWindow(parent,TRUE);SetActiveWindow(parent);}

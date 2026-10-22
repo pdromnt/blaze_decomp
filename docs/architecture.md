@@ -91,7 +91,7 @@ Remaining feature: campaign save/load. Controller hardware acceptance is pending
 
 ## Audio and pause ownership
 
-`BlazeWindowsAudio` owns one decoded bank, four waveOut buffers and a music
+The Win32 comparison backend's `BlazeWindowsAudio` owns one decoded bank, four waveOut buffers and a music
 owner. The music owner exclusively manages two MIDI slots and the deferred CD
 backend on one CRT worker thread. The app owns a non-owning `BlazeMedia` callback table;
 its world references that table, including after continue. All audio calls take
@@ -110,6 +110,24 @@ voices and requests a worker reset. Close signals and joins that worker before
 reset/unprepare/device close and bank destruction, including partial-open failure.
 Muted diagnostics alone mix synchronously. Neither PCM service nor frame
 submission waits for music. Actual driver transitions can still leave a music gap.
+
+The SDL backend now owns `BlazeSdlAudio`: one `BlazeSdlPcm` and the independently
+retained Windows MIDI worker. It does not link `windows_audio.c` or enter WaveOut.
+The PCM stream requests mono S16/22050 input and SDL converts for the device.
+Its callback mixes bounded 256-sample chunks without touching game state or I/O;
+the stream lock serializes mixer mutation. Sound callbacks take that same lock.
+Silence clears voices and queued stream data without taking a device lock under
+the stream lock. Destroying the stream stops/joins callbacks and closes its device
+before bank release. Partial opens are closable. A submission failure propagates
+through an atomic flag to the application. Muted diagnostics alone keep the old
+synchronous 256-sample pump. The controls editor accepts an idle callback/context;
+it no longer requires a `BlazeWindowsAudio` owner.
+
+Unbound-stream tests compare exact multirate/clipped samples and all voice state
+with the existing mixer across callback chunk boundaries. Dummy and silent WASAPI
+checks cover 400 ms without main pumping, queued-sound reset and six active
+close/reopen cycles on x64/x86. This verifies transport, not audible balance or a
+portable MIDI synth. Music request/EOF semantics remain those of the existing worker.
 
 The worker alone owns playback state. `BlazeMusicStatus` is a read-only publication
 for completion/diagnostics, protected by the same short lock. Submission intent
@@ -659,7 +677,7 @@ Keyboard IDs remain the persisted VK format, translated explicitly to SDL keys;
 unmapped IDs fail visibly instead of being ignored. SDL does not capture the
 mouse or accept unfocused gameplay input. Windowed/letterboxed/centered display
 and monotonic `Time` deadlines retain the existing simulation cadence. This first
-candidate explicitly retains WinMM media and the Windows F10 editor; it is not
+candidate explicitly retains Windows MIDI and the Windows F10 editor; it is not
 yet a portable Unix application. The default Win32 target remains available.
 
 Live Ghidra audit of the remaining legacy keys (2026-10-21):

@@ -7,12 +7,13 @@
 static int rgb(SDL_Surface *s,int x,int y,unsigned r,unsigned g,unsigned b) {
     Uint8 rr,gg,bb,aa;return SDL_ReadSurfacePixel(s,x,y,&rr,&gg,&bb,&aa) && rr==r && gg==g && bb==b;
 }
-int main(void) {
+int main(int argc,char **argv) {
     SdlPlatform *p=calloc(1,sizeof(*p));BlazeFrame *frame=calloc(1,sizeof(*frame));
     SDL_Surface *readback=NULL;SDL_JoystickID virtual_id=0;SDL_VirtualJoystickDesc desc;
     bool keys[SDL_SCANCODE_COUNT]={0};BlazeControls c;unsigned i;int result=1;
+    BlazeSdlAudio audio={0};
     HWND foreground=GetForegroundWindow();
-    SDL_SetMainReady();CHECK(p && frame && SDL_Init(SDL_INIT_VIDEO|SDL_INIT_JOYSTICK));
+    SDL_SetMainReady();CHECK(argc==2 && p && frame && SDL_Init(SDL_INIT_VIDEO|SDL_INIT_JOYSTICK));
     CHECK(SDL_CreateWindowAndRenderer("BLAZE",640,480,SDL_WINDOW_HIDDEN,&p->window,&p->renderer));
     CHECK(!strcmp(SDL_GetWindowTitle(p->window),"BLAZE") && GetForegroundWindow()==foreground);
     {HWND hwnd=(HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(p->window),SDL_PROP_WINDOW_WIN32_HWND_POINTER,NULL);
@@ -52,8 +53,24 @@ int main(void) {
     CHECK(!poll_input(p) && GetForegroundWindow()==foreground);
     CHECK(SDL_DetachVirtualJoystick(virtual_id));virtual_id=0;CHECK(!SDL_JoystickConnected(p->joystick));
     p->files.controls.device=0;pad_refresh(p);CHECK(!p->joystick);
+    {
+        BlazeMusicStatus status={0};unsigned n;
+        CHECK(blaze_sdl_audio_open(&audio,argv[1],1));
+        audio.media.sound(audio.media.context,BLAZE_SHT);blaze_sdl_audio_pump(&audio);
+        CHECK(audio.pcm.mixer.voices[BLAZE_SHT][0].position>0);
+        audio.media.silence(audio.media.context);CHECK(!audio.pcm.mixer.voices[BLAZE_SHT][0].active);
+        audio.media.load(audio.media.context,0,"blz_sg1f.mid",1,0);
+        audio.media.load(audio.media.context,1,"blz_sg1f.mid",1,0);
+        audio.media.play(audio.media.context,0,1);audio.media.stop(audio.media.context);audio.media.play(audio.media.context,1,0);
+        for(n=0;n<1000;++n) {blaze_windows_music_status(audio.music,&status);if(status.completed==status.submitted)break;SDL_Delay(1);}
+        if(n==1000 || status.failed || !status.playing || status.active!=1 || !status.valid[0] || !status.valid[1]) {
+            blaze_sdl_audio_close(&audio);CHECK(0);
+        }
+        audio.media.stop(audio.media.context);blaze_sdl_audio_close(&audio);
+    }
     puts("SDL renderer colors/scale/centered mode, saved-key mapping, virtual axes/hats/button32 and detached-owner cleanup passed");result=0;
 done:
+    blaze_sdl_audio_close(&audio);
     if(virtual_id)SDL_DetachVirtualJoystick(virtual_id);
     if(p && p->joystick)SDL_CloseJoystick(p->joystick);
     if(readback)SDL_DestroySurface(readback);

@@ -4,7 +4,7 @@ Targets: Windows x86/x64/ARM64, Linux x64/ARM64, macOS ARM64. Windows x86/x64
 currently run the application; ARM64 Windows is configured but not locally built.
 Unix CI checks the ordinary-C core and shared settings. The optional SDL3 Windows
 candidate now runs the real application with SDL presentation/input/timing; it
-retains the existing WinMM media owner and native F10 editor. Default remains
+uses SDL PCM and retains the Windows MIDI worker and F10 editor. Default remains
 Win32. No Unix runtime or ARM execution is claimed at this checkpoint.
 
 ## Keep the game and its owners
@@ -39,15 +39,30 @@ Do not add a second writable game state or redesign the renderer.
    one platform owner. Retain `Time=40`, monotonic deadlines and no catch-up bursts;
    presentation/VSync must not change simulation or RNG cadence. Gate on menus,
    real level loading, combat, repeated abort/new level, focus and shutdown.
-3. **Complete PCM and MIDI lifecycle.** Feed existing `BlazeMixer` output to an
-   SDL audio stream serviced independently of frame work. Synchronize only mixer
-   mutation; never let a callback touch mutable game state. Preserve four voices
-   per sound, reset/close ordering, no underruns on menu/song changes, pause policy
-   and real music EOF. SDL PCM transport alone does not replace Windows MCI MIDI:
+3. **Complete PCM and MIDI lifecycle.** SDL PCM now feeds the existing mixer
+   through a device callback, independently of frame work, with one bank/mixer and
+   the stream lock around play/clear/mix. Its owned device closes before samples
+   are freed. The F10 editor borrows an idle callback rather than an audio type.
+   Exact multi-rate/clipping/voice tests and dummy/WASAPI stalls/reset/reopen pass.
+   Remaining: music EOF and portable MIDI. SDL PCM alone does not replace MCI:
    select a portable synth plus licensed instrument bank, then cover both MIDI
    choices, reset files, two loaded slots, loops, random selection and credits.
    Pin dependency/data versions and notices. Keep CD deferred. MIDI timbre and
    licensing are the main unresolved dependency, not an excuse to ship silence.
+
+   Static inspection of the 32 shipped MIDI files found 17 SMF-0, 15 SMF-1,
+   PPQ division, 47 tempo events, GS/GM reset SysEx and controllers including
+   modulation (1), portamento time/switch (5/65), reverb (91), chorus (93) and
+   bank selection (0/32). A note-only player is insufficient. TinySoundFont's
+   current MIDI-control switch does not implement those modulation/portamento/
+   effects controls; do not select it solely for its small size. Compare
+   FluidSynth/FluidLite controller/reset coverage before pinning a synth. GeneralUser
+   GS is a possible full bank, but its author's sample-provenance caveat must remain
+   part of the separate distribution review. No new synth/font has been bundled.
+   Evidence: [TinySoundFont handler](https://github.com/schellingb/TinySoundFont/blob/main/tsf.h),
+   [FluidSynth](https://github.com/FluidSynth/fluidsynth),
+   [FluidLite](https://github.com/divideconcept/FluidLite),
+   [bank author's license](https://github.com/mrbumpy409/GeneralUser-GS/blob/main/documentation/LICENSE.txt).
 4. **Six native applications and packages.** Run existing fixtures on all targets,
    then owned bounded platform sessions and manual visible/audio/controller tests.
    Audit integer overflow/shifts/conversions/alignment and pointer assumptions

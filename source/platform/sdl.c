@@ -1,7 +1,8 @@
-/* SDL presentation/input/timing candidate. Windows media and F10 editor remain
+/* SDL presentation/input/PCM/timing candidate. Windows MIDI and F10 editor remain
    explicit native dependencies for this first connected application milestone. */
 #define WIN32_LEAN_AND_MEAN
-#include "windows_audio.h"
+#include <windows.h>
+#include "sdl_audio.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include "settings.h"
@@ -132,7 +133,7 @@ static int dump_frame(const char *path,const BlazeFrame *frame) {
     return fclose(f)==0;
 }
 int main(int argc,char **argv) {
-    SdlPlatform *p=calloc(1,sizeof(*p));BlazeApp *a=calloc(1,sizeof(*a));BlazeWindowsAudio *audio=calloc(1,sizeof(*audio));
+    SdlPlatform *p=calloc(1,sizeof(*p));BlazeApp *a=calloc(1,sizeof(*a));BlazeSdlAudio *audio=calloc(1,sizeof(*audio));
     char rop[1200],folder[1200];const char *root=NULL,*requested=NULL,*dump=NULL,*input=NULL;
     unsigned frames=0,limit=0,seed=0;int hidden=0,muted=0,explicit_audio=0,has_seed=0,quit=0,result=1,i,initialized=0;
     uint8_t *script=NULL;size_t script_size=0;Uint64 next=0,started=0,previous=0;unsigned period=40,overruns=0;
@@ -167,7 +168,7 @@ int main(int argc,char **argv) {
         if(!blaze_path(folder,sizeof(folder),SDL_GetBasePath(),"dat"))goto done;requested=folder;
     }
     if(!blaze_settings_paths(&p->files,requested) || !blaze_settings_load(&p->files,a) || !bindings_supported(&p->files.controls))goto done;
-    if(!blaze_windows_audio_open(audio,root,muted))goto done;
+    if(!blaze_sdl_audio_open(audio,root,muted))goto done;
     blaze_app_set_media(a,&audio->media);if(has_seed)blaze_random_begin(&a->random,seed);
     if(!SDL_CreateWindowAndRenderer("BLAZE",640,480,SDL_WINDOW_HIDDEN|SDL_WINDOW_RESIZABLE,&p->window,&p->renderer))goto done;
     p->texture=SDL_CreateTexture(p->renderer,SDL_PIXELFORMAT_RGBA32,SDL_TEXTUREACCESS_STREAMING,320,240);
@@ -185,7 +186,7 @@ int main(int argc,char **argv) {
             if(!hidden && event.type==SDL_EVENT_KEY_DOWN && event.key.scancode==SDL_SCANCODE_F10 && !event.key.repeat) {
                 HWND hwnd=(HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(p->window),SDL_PROP_WINDOW_WIN32_HWND_POINTER,NULL);
                 BlazeControls previous_controls=p->files.controls;int edited;
-                blaze_app_pause(a,4,1);edited=hwnd?controls_edit(hwnd,&p->files.controls,audio):-1;blaze_app_pause(a,4,0);
+                blaze_app_pause(a,4,1);edited=hwnd?controls_edit(hwnd,&p->files.controls,blaze_sdl_audio_pump,audio):-1;blaze_app_pause(a,4,0);
                 if(edited<0 || (edited && (!bindings_supported(&p->files.controls) || !blaze_settings_controls(&p->files)))) {
                     p->files.controls=previous_controls;SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,"BLAZE controls","Cannot save controls. Previous bindings retained.",p->window);
                 }
@@ -194,7 +195,7 @@ int main(int argc,char **argv) {
         }
         if(quit)break;
         if(!hidden && frames && (!(SDL_GetWindowFlags(p->window)&SDL_WINDOW_INPUT_FOCUS) || (SDL_GetWindowFlags(p->window)&SDL_WINDOW_MINIMIZED))) {
-            blaze_app_pause(a,1,1);blaze_windows_audio_pump(audio);
+            blaze_app_pause(a,1,1);blaze_sdl_audio_pump(audio);
             if(!present(p,&a->frame)) {result=1;break;}
             next=SDL_GetTicksNS();previous=0;SDL_Delay(20);continue;
         }
@@ -206,7 +207,8 @@ int main(int argc,char **argv) {
             previous=begin;
             if(!blaze_app_tick(a,actions)) {result=1;break;}
             if(!present(p,&a->frame)) {result=1;break;}
-            blaze_windows_audio_pump(audio);++frames;
+            blaze_sdl_audio_pump(audio);++frames;
+            if(blaze_sdl_pcm_failed(&audio->pcm)) {fprintf(stderr,"SDL PCM submission failed\n");result=1;break;}
             ms=(double)(SDL_GetTicksNS()-begin)/1000000;work_total+=ms;if(ms>work_max)work_max=ms;if(ms>period)++overruns;
         }
         if(a->state==BLAZE_BLOCKED) {result=2;break;}if(a->state==BLAZE_EXIT)break;
@@ -230,6 +232,6 @@ done:
     if(p && p->texture)SDL_DestroyTexture(p->texture);
     if(p && p->renderer)SDL_DestroyRenderer(p->renderer);
     if(p && p->window)SDL_DestroyWindow(p->window);
-    if(a)blaze_app_close(a);if(audio)blaze_windows_audio_close(audio);
+    if(a)blaze_app_close(a);if(audio)blaze_sdl_audio_close(audio);
     if(initialized)SDL_Quit();free(script);free(audio);free(a);free(p);return result;
 }

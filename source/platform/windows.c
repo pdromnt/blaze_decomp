@@ -80,6 +80,7 @@ static int save_options(void *context,int level,int display,int music) {
 static int save_progress(void *context,const int scores[5],const int modes[5],unsigned weapons) {
     WindowSettings *s=context;return blaze_settings_progress(&s->storage,scores,modes,weapons);
 }
+static void audio_idle(void *context) {blaze_windows_audio_pump(context);}
 static int save_controls(WindowSettings *s) {return blaze_settings_controls(&s->storage);}
 static int load_options(WindowSettings *s,BlazeApp *a) {return blaze_settings_load(&s->storage,a);}
 /* The application owns the retained framebuffer until after DestroyWindow.
@@ -224,7 +225,7 @@ int main(int argc,char **argv) {
             if (message.message==WM_QUIT) { quit=1; break; }
             if(!hidden && (message.message==WM_KEYDOWN || message.message==WM_SYSKEYDOWN) && message.wParam==VK_F10) {
                 BlazeControls previous=settings.storage.controls;int edited;
-                blaze_app_pause(app,4,1);edited=controls_edit(window,&settings.storage.controls,audio);blaze_app_pause(app,4,0);
+                blaze_app_pause(app,4,1);edited=controls_edit(window,&settings.storage.controls,audio_idle,audio);blaze_app_pause(app,4,0);
                 if(edited<0 || (edited && !save_controls(&settings))) {
                     settings.storage.controls=previous;MessageBoxA(window,"Cannot save controls. Previous bindings retained.","Blaze controls",MB_OK|MB_ICONERROR);
                 }
