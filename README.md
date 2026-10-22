@@ -1,6 +1,6 @@
 # BLAZE - RE/Decompiled
 
-<img width="641" height="509" alt="Screenshot 2026-10-22 012637" src="https://github.com/user-attachments/assets/939ba904-134a-4a07-97a7-3a0e4027393a" /><img width="637" height="510" alt="Screenshot 2026-10-22 012930" src="https://github.com/user-attachments/assets/aee5224c-42de-4e56-ba3b-7236678be724" />
+<img width="320" alt="Screenshot 2026-10-22 012637" src="https://github.com/user-attachments/assets/939ba904-134a-4a07-97a7-3a0e4027393a" /><img width="320" alt="Screenshot 2026-10-22 012930" src="https://github.com/user-attachments/assets/aee5224c-42de-4e56-ba3b-7236678be724" />
 
 A reconstruction of **BLAZE 2.00**, the side-scrolling shooter by **TEA**, written
 in C with SDL3 support for Windows, Linux and macOS. The original game data is
