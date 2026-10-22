@@ -87,3 +87,9 @@ hardware acceptance. No mid-mission/campaign resume is implemented.
 
 Original game content retains its separate ownership. No project-wide source
 license has been selected. See [Third-party notices](THIRD_PARTY_NOTICES.md).
+
+## Original creator
+
+BLAZE was created by **TEA — Ryohei Koizumi (小泉亮平)**, credited for programming
+and graphics and named as the original copyright holder in the game's manual.
+Visit [TEA's original website](https://www.asahi-net.or.jp/~vi8r-kizm/index_org.html).
