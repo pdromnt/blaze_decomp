@@ -24,3 +24,6 @@ CMakeLists.txt text eol=lf
 .gitignore text eol=lf
 # Preserve upstream license bytes, including its original whitespace.
 /source/third_party/SDL3-LICENSE.txt -text -whitespace
+/source/third_party/FluidSynth-LICENSE.txt -text -whitespace
+/source/third_party/GeneralUser-GS-LICENSE.txt -text -whitespace
+/source/third_party/GCEM-LICENSE.txt -text -whitespace

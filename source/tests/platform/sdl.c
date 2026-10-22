@@ -62,7 +62,7 @@ int main(int argc,char **argv) {
         audio.media.load(audio.media.context,0,"blz_sg1f.mid",1,0);
         audio.media.load(audio.media.context,1,"blz_sg1f.mid",1,0);
         audio.media.play(audio.media.context,0,1);audio.media.stop(audio.media.context);audio.media.play(audio.media.context,1,0);
-        for(n=0;n<1000;++n) {blaze_windows_music_status(audio.music,&status);if(status.completed==status.submitted)break;SDL_Delay(1);}
+        for(n=0;n<1000;++n) {blaze_sdl_music_status(audio.music,&status);if(status.completed==status.submitted)break;SDL_Delay(1);}
         if(n==1000 || status.failed || !status.playing || status.active!=1 || !status.valid[0] || !status.valid[1]) {
             blaze_sdl_audio_close(&audio);CHECK(0);
         }

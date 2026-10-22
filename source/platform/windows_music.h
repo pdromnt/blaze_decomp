@@ -1,12 +1,8 @@
 #ifndef BLAZE_WINDOWS_MUSIC_H
 #define BLAZE_WINDOWS_MUSIC_H
-#include <stdint.h>
+#include "music_status.h"
 typedef struct BlazeWindowsMusic BlazeWindowsMusic;
 /* Read-only publication, never a second writable playback owner. */
-typedef struct {
-    uint64_t submitted,completed,starts,loops;
-    int playing,finished,active,valid[2],failed;
-} BlazeMusicStatus;
 /* root is borrowed from the audio owner. Only the submitting thread reads it;
    queued requests own their complete paths. Close joins before root is freed. */
 BlazeWindowsMusic *blaze_windows_music_open(const char *root,int muted);

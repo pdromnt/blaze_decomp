@@ -1,11 +1,10 @@
 #ifndef BLAZE_SDL_AUDIO_H
 #define BLAZE_SDL_AUDIO_H
 #include "sdl_pcm.h"
-#include "windows_music.h"
-/* SDL owns PCM; the existing independent Windows MIDI worker remains explicit.
-   There is no WaveOut owner or second sound bank in the SDL application. */
+#include "sdl_music.h"
+/* Independent SDL PCM and MIDI owners, joined before their shared root dies. */
 typedef struct {
-    BlazeSdlPcm pcm;BlazeWindowsMusic *music;BlazeMedia media;char root[1024];
+    BlazeSdlPcm pcm;BlazeSdlMusic *music;BlazeMedia media;char root[1024];
 } BlazeSdlAudio;
 int blaze_sdl_audio_open(BlazeSdlAudio *audio,const char *root,int muted);
 void blaze_sdl_audio_pump(void *audio);

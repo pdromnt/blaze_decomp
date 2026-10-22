@@ -28,6 +28,13 @@ $bytes=[IO.File]::ReadAllBytes($exe)
 $identity=[Text.Encoding]::ASCII.GetString($bytes)
 if(!$identity.Contains('BLAZE_NATIVE_C:')){throw 'Native application identity missing.'}
 if($identity.Contains('BLAZE_NATIVE_C: SDL3') -and !(Test-Path -LiteralPath (Join-Path $assets 'SDL3-LICENSE.txt'))){throw 'SDL3 candidate requires its license in the runtime package.'}
+if($identity.Contains('BLAZE_NATIVE_C: SDL3')) {
+    foreach($name in @('resources/GeneralUser-GS.sf2','FluidSynth-LICENSE.txt','GeneralUser-GS-LICENSE.txt','GCEM-LICENSE.txt',
+        'third_party/fluidsynth-source/v2.6.1.tar.gz','third_party/fluidsynth-source/012ae73c6d0a2cb09ffe86475f5c6fba3926e200.zip','third_party/fluidsynth-source/midi.cmake')) {
+        if(!(Test-Path -LiteralPath (Join-Path $assets $name))){throw "SDL MIDI runtime content missing: $name"}
+    }
+    if($Platform.StartsWith('windows-') -and !(Test-Path -LiteralPath (Join-Path $assets 'libfluidsynth-3.dll'))){throw 'SDL MIDI synthesizer DLL missing.'}
+}
 if($Platform.StartsWith('windows-')){
     if($bytes.Length -lt 64 -or $bytes[0] -ne 77 -or $bytes[1] -ne 90){throw 'Invalid PE.'}
     $pe=[BitConverter]::ToInt32($bytes,60)

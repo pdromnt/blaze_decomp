@@ -209,6 +209,8 @@ int main(int argc,char **argv) {
             if(!present(p,&a->frame)) {result=1;break;}
             blaze_sdl_audio_pump(audio);++frames;
             if(blaze_sdl_pcm_failed(&audio->pcm)) {fprintf(stderr,"SDL PCM submission failed\n");result=1;break;}
+            {BlazeMusicStatus music;blaze_sdl_music_status(audio->music,&music);
+            if(music.failed) {fprintf(stderr,"SDL MIDI worker failed\n");result=1;break;}}
             ms=(double)(SDL_GetTicksNS()-begin)/1000000;work_total+=ms;if(ms>work_max)work_max=ms;if(ms>period)++overruns;
         }
         if(a->state==BLAZE_BLOCKED) {result=2;break;}if(a->state==BLAZE_EXIT)break;

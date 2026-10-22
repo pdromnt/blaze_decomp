@@ -6,6 +6,10 @@
 /build/
 /dist/
 /resources/
+/SDL3-LICENSE.txt
+/FluidSynth-LICENSE.txt
+/GeneralUser-GS-LICENSE.txt
+/GCEM-LICENSE.txt
 *.exe
 *.dll
 *.obj

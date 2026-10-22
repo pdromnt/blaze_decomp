@@ -732,3 +732,23 @@ capture/cancel/unbind/defaults/save without focus changes or desktop key injecti
 Physical pad compatibility, unplug/replug and interactive editor/audio acceptance
 remain manual checks. No controller emulation or unavailable-device success stub
 is used; absent devices contribute no actions and keyboard remains usable.
+
+## SDL MIDI ownership
+
+`BlazeSdlMusic` owns one FluidSynth settings/synth pair, one loaded SoundFont,
+two sample-timed SMF players and one bounded stereo SDL stream. A single worker
+owns those objects and all MIDI I/O/rendering. The main thread submits owned-path
+FIFO requests under a short publication lock; it never synthesizes or loads a
+song. Loading the inactive slot preserves active playback/EOF. Play/stop or an
+active-slot load invalidates old EOF immediately through intent sequence IDs.
+Nonloop EOF uses the SMF tick boundary, then waits for SDL's queued input to drain;
+it does not add FluidSynth's voice/reverb grace period to menu transitions.
+Muted diagnostics parse slots without advancing wall-clock music, as before.
+
+Stop clears queued music and consumes the old player's deferred all-sound-off
+before another player can emit notes. Closing signals/joins the worker before
+destroying its stream, players, synth and settings; queued commands are released.
+PCM has a separate owner/stream and keeps running during MIDI I/O. Game pause
+continues asynchronous music/SFX, matching the recovered behavior. CD is explicit
+unsupported in this candidate. Win32 retains the independent original MCI worker
+for comparison; no SDL media call re-enters it.

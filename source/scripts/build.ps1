@@ -46,6 +46,13 @@ if(!$NoDeploy){
         $settings=Join-Path $root "dat/$name"
         if(!(Test-Path -LiteralPath $settings)){Copy-Item -LiteralPath (Join-Path $source "resources/defaults/$name") -Destination $settings}
     }
+    if($Backend -eq 'SDL3') {
+        Copy-Item -LiteralPath (Join-Path $build 'bin/libfluidsynth-3.dll') -Destination $root -Force
+        Copy-Item -LiteralPath (Join-Path $build 'bin/resources/GeneralUser-GS.sf2') -Destination (Join-Path $root 'resources/GeneralUser-GS.sf2') -Force
+        foreach($name in @('SDL3','FluidSynth','GeneralUser-GS','GCEM')) {
+            Copy-Item -LiteralPath (Join-Path $source "third_party/$name-LICENSE.txt") -Destination $root -Force
+        }
+    }
     Copy-Item -LiteralPath (Join-Path $build 'bin/blaze.exe') -Destination $destination -Force
     Write-Host "Built $destination; local INIs preserved."
 }else{Write-Host "Built $build/bin/blaze.exe; deployment skipped."}
