@@ -93,3 +93,6 @@ license has been selected. See [Third-party notices](THIRD_PARTY_NOTICES.md).
 BLAZE was created by **TEA — Ryohei Koizumi (小泉亮平)**, credited for programming
 and graphics and named as the original copyright holder in the game's manual.
 Visit [TEA's original website](https://www.asahi-net.or.jp/~vi8r-kizm/index_org.html).
+
+The original CD soundtrack is available through
+[this music release page](https://linkco.re/TNsDhama?lang=en).
