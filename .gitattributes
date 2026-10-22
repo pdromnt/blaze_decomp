@@ -1,0 +1,24 @@
+* text=auto
+*.c text eol=lf
+*.h text eol=lf
+*.cmake text eol=lf
+CMakeLists.txt text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.ps1 text eol=lf
+*.py text eol=lf
+*.ini binary
+*.dat binary
+*.DAR -text
+*.dar -text
+*.mid -text
+*.MID -text
+*.wav -text
+*.bin -text
+*.ico -text
+*.gif -text
+# Preserve original documentation bytes/encoding instead of normalizing them.
+/html/** binary
+/html_en/** binary
+.gitattributes text eol=lf
+.gitignore text eol=lf

@@ -1,0 +1,34 @@
+# Private recovery history, immutable original snapshot and executable oracles
+/game-recomp/
+# Reproducible binaries / build and release staging
+/source/build/
+/source/dist/
+/build/
+/dist/
+/resources/
+*.exe
+*.dll
+*.obj
+*.o
+*.lib
+*.a
+*.pdb
+*.res
+*.ilk
+*.exp
+# Player configuration is seeded from source/resources/defaults/.
+/dat/*.ini
+*.log
+*.dmp
+*.tmp
+*.bak
+.vs/
+.vscode/
+.idea/
+__pycache__/
+*.pyc
+*.user
+*.suo
+.DS_Store
+Thumbs.db
+Desktop.ini

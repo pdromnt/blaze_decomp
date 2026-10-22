@@ -1,0 +1,102 @@
+name: Native builds
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**/*.md']
+  pull_request:
+    paths-ignore: ['**/*.md']
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      source_ref:
+        type: string
+        required: true
+      package_version:
+        type: string
+        required: true
+      require_runtime:
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: native-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' && github.event_name != 'workflow_call' }}
+jobs:
+  build:
+    name: ${{ matrix.platform }} (${{ matrix.scope }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-x86
+            runner: windows-2022
+            architecture: x86
+            scope: application
+          - platform: windows-x64
+            runner: windows-2022
+            architecture: x64
+            scope: application
+          - platform: windows-arm64
+            runner: windows-11-arm
+            architecture: ARM64
+            scope: application
+          - platform: linux-x64
+            runner: ubuntu-24.04
+            scope: core checks
+          - platform: linux-arm64
+            runner: ubuntu-24.04-arm
+            scope: core checks
+          - platform: macos-arm64
+            runner: macos-15
+            scope: core checks
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.source_ref || github.sha }}
+      - name: Build Windows application and run native checks
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./source/scripts/build.ps1 -Architecture '${{ matrix.architecture }}' -Configuration Release -Tests -NoDeploy
+      - name: Configure Unix core (release requires the real application)
+        if: runner.os != 'Windows'
+        run: cmake -S source -B source/build/native -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DBLAZE_BUILD_APPLICATION=${{ inputs.require_runtime && 'ON' || 'OFF' }}
+      - name: Build and check Unix core
+        if: runner.os != 'Windows'
+        run: |
+          cmake --build source/build/native --parallel 2
+          ctest --test-dir source/build/native --output-on-failure
+      - name: Stage Windows runtime
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $build='source/build/windows-${{ matrix.architecture }}'.ToLowerInvariant()
+          cmake --install $build --config Release --prefix source/build/stage --component Runtime
+          if($LASTEXITCODE){throw 'Runtime installation failed.'}
+      - name: Check staged application finds its own assets
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $exe=(Resolve-Path source/build/stage/blaze.exe).Path
+          $process=Start-Process $exe -ArgumentList '--hidden','--mute','--frames','50','--seed','1','--settings','none' -WorkingDirectory $env:RUNNER_TEMP -WindowStyle Hidden -PassThru
+          try {
+            if(!$process.WaitForExit(15000)) {throw 'Staged application timed out.'}
+            if($process.ExitCode -ne 0) {throw "Staged application exited $($process.ExitCode)."}
+          } finally {
+            if(!$process.HasExited){$process.Kill()}
+            $process.Dispose()
+          }
+      - name: Package Windows runtime and verify architecture
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          PACKAGE_VERSION: ${{ inputs.package_version || 'snapshot' }}
+        run: ./source/scripts/package-release.ps1 -Version $env:PACKAGE_VERSION -Platform '${{ matrix.platform }}' -StageDirectory source/build/stage
+      - uses: actions/upload-artifact@v7
+        if: runner.os == 'Windows'
+        with:
+          name: runtime-${{ matrix.platform }}
+          path: source/dist/*
+          if-no-files-found: error
+          retention-days: 7

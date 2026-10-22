@@ -1,0 +1,4 @@
+#ifndef BLAZE_WINDOWS_RESOURCES_H
+#define BLAZE_WINDOWS_RESOURCES_H
+#define BLAZE_ICON 1
+#endif

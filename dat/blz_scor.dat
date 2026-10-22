@@ -1,0 +1,86 @@
+<HTML>
+<HEAD>
+<TITLE>インターネットランキング</TITLE>
+</HEAD>
+
+<BODY TEXT="#D0D0FF" LINK="#A0D0FF" VLINK="#D0A0FF" BGCOLOR="#000000">
+
+
+<CENTER>
+<font size=5><B>BLAZE</B></font>
+<br>インターネットランキング
+<br>
+
+<form action="http://cgi.netlaputa.ne.jp/~sito/cgi/cgi-bin/blzrnk.cgi" method="POST">
+<!---
+<form action="http://tea1/cgi-bin/blzrnk.cgi" method="POST">
+--->
+
+<input type=hidden name=mode value="regist">
+<table cellpadding=1 cellspacing=1>
+<tr BGCOLOR="#000060">
+	<td>お名前<small>(漢字もＯＫ　２０文字まで)</small></td>
+	<td><input type=text name=name size="40" value=""></td>
+</tr>
+<tr BGCOLOR="#000050">
+	<td colspan=2>
+	一言どうぞ<small>(漢字４０文字まで)</small><br>
+	<input type=text name=com size="80" value="">
+	</td>
+</tr>
+<tr BGCOLOR="#000040">
+	<td>SCORE</td>
+	<td>
+%s
+	</td>
+</tr>
+<tr BGCOLOR="#000030">
+	<th colspan=2>
+	<input type=submit value="送信する">
+	</th>
+</tr>
+</table>
+
+<input type=hidden name=sub value="
+%s
+">
+<input type=hidden name=email value="
+%i
+">
+<input type=hidden name=url value="
+%c
+">
+<input type=hidden name=pwd value="
+%w
+">
+</form>
+<br>
+<HR>
+
+<FORM ACTION="http://cgi.netlaputa.ne.jp/~sito/cgi/cgi-bin/blzrnk.cgi" METHOD="post">
+<!---
+<form action="http://tea1/cgi-bin/blzrnk.cgi" method="POST">
+--->
+
+●現在までのインターネット・ハイスコアを確認できます。<P>
+インターネットに接続後、押して下さい。<BR>
+<INPUT TYPE="submit" VALUE="インターネット・ハイスコア表示"><P>
+
+
+
+</CENTER>
+<HR>
+<BR><A HREF="http://www.asahi-net.or.jp/~vi8r-kizm/">最新情報をチェック</A>
+<BR><A HREF="enh_help.html">説明書を見る</A>
+<BR><A HREF="mailto:vi8r-kizm@asahi-net.or.jp">メールを贈る</A>
+
+<FONT COLOR=#FF0000 SIZE=2>
+<BR>
+<BR>
+★注意<BR>
+　名前を変えてもスコアは１つしか登録できないようにしています。<BR>
+　（複数登録する方法もありますが、見つけてもやらないで下さいね）
+</FONT>
+</FORM>
+</BODY>
+</HTML>

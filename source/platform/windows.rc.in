@@ -1,0 +1,3 @@
+#include "windows_resources.h"
+LANGUAGE 0, 0
+BLAZE_ICON ICON "@CMAKE_BINARY_DIR@/bin/resources/blaze.ico"

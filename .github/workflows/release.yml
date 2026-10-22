@@ -1,0 +1,65 @@
+name: Build release
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing release tag; all six playable targets must pass (blocked until SDL3 is integrated)
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    outputs:
+      source_ref: ${{ steps.source.outputs.source_ref }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Resolve the existing tag to an immutable commit
+        id: source
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^[A-Za-z0-9._-]+$ ]]
+          git check-ref-format "refs/tags/$RELEASE_TAG"
+          source_ref=$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")
+          echo "source_ref=$source_ref" >> "$GITHUB_OUTPUT"
+  build:
+    needs: prepare
+    uses: ./.github/workflows/build.yml
+    with:
+      source_ref: ${{ needs.prepare.outputs.source_ref }}
+      package_version: ${{ inputs.release_tag }}
+      require_runtime: true
+  publish:
+    needs: [prepare, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: runtime-*
+          path: release-assets
+          merge-multiple: true
+      - name: Require every platform package before publishing
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          for platform in windows-x86 windows-x64 windows-arm64 linux-x64 linux-arm64 macos-arm64; do
+            case "$platform" in windows-*) suffix=zip;; linux-*) suffix=tar.gz;; macos-*) suffix=dmg;; esac
+            test -s "release-assets/blaze-$RELEASE_TAG-$platform.$suffix"
+          done
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release-assets/* --clobber
+          else
+            gh release create "$RELEASE_TAG" release-assets/* --verify-tag --generate-notes
+          fi
