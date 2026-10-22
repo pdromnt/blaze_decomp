@@ -5,13 +5,11 @@ no CPU/x87 interpreter, generated instruction execution or original executable
 is used by the shipping target. Five stages, bosses, weapons, menus, SFX/MIDI,
 pause, controls and score/unlock persistence are connected.
 
-Windows x86/x64 are locally tested. Real SDL application candidates are configured
-for Windows ARM64, Linux x64/ARM64 and macOS ARM64; their native CI builds/runs
-are still unverified. The SDL3 candidate handles presentation,
-keyboard/joystick input, PCM SFX, software MIDI, an in-window controls editor and
-pacing. A complete natural campaign and physical
-controller acceptance remain open.
-
+Windows x86/x64 are locally tested. Native CI has built and run the SDL application
+on macOS ARM64 and Linux x64/ARM64, including deterministic gameplay and packaged
+launches. Windows ARM64 CI is still pending. The SDL3 backend handles presentation,
+keyboard/joystick input, PCM SFX, software MIDI, controls editing and pacing.
+A complete natural campaign and real display/audio/controller acceptance remain open.
 ## Build and run
 
 Visual Studio C/C++ tools, Windows SDK and CMake 3.24+:
@@ -32,7 +30,7 @@ To build the SDL3 candidate, add `-Backend SDL3`. It fetches checksum-pinned SDL
 same game/settings owners. Music timbre differs from the Windows system synth;
 listening acceptance remains open. Use `-NoDeploy` to keep root `blaze.exe` on
 the stable Win32 backend. Asset lookup and writable paths are connected; Unix
-build/run acceptance remains open. CD playback remains deferred.
+hardware acceptance remains open. CD playback remains deferred.
 
 On Linux/macOS, build the SDL application with CMake and a C/C++ toolchain:
 
@@ -43,8 +41,7 @@ cmake --install source/build/native --prefix source/build/stage --component Runt
 ```
 
 Build trees share immutable assets and run without `--assets`. Linux installs
-`blaze`; macOS installs `Blaze.app` with bundled assets/library. Native execution
-on those systems is not yet confirmed; dependency setup is in the candidate CI.
+`blaze`; macOS installs `Blaze.app` with bundled assets/library. Native CI execution is verified; dependency setup is in the SDL build workflow.
 Windows retains executable-adjacent `dat/`. Linux/macOS use SDL's user-data
 directory with a `dat/` subfolder. `--portable` selects executable-adjacent data
 on Linux; macOS bundles always use external writable storage. `--settings DIR`
@@ -80,7 +77,7 @@ extraction and executable differential tools. It is not a public build dependenc
 CI builds six SDL application runtimes and preserves a Windows comparison job.
 Download `runtime-<platform>` artifacts from Actions for ZIP/tar.gz/DMG packages
 and SHA-256 checksums. Packaged launches and deterministic gameplay checks precede
-upload; native Unix/ARM results remain pending the first run. See
+upload; native macOS/Linux results pass; Windows ARM64 remains pending. See
 [testing instructions](docs/TESTING.md) and [distribution notes](docs/DISTRIBUTION.md).
 The manually dispatched release workflow requires all six packages from an existing
 tag. Ordinary CI does not publish releases.
