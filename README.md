@@ -8,8 +8,8 @@ pause, controls and score/unlock persistence are connected.
 Windows x86/x64 are locally tested. Windows ARM64 is configured for native CI;
 Linux x64/ARM64 and macOS ARM64 currently build core checks only. Their playable
 SDL3 backend is in progress. A Windows SDL3 candidate now handles presentation,
-keyboard/joystick input, PCM SFX, software MIDI and pacing. F10 still uses its
-Windows editor. A complete natural campaign and physical
+keyboard/joystick input, PCM SFX, software MIDI, an in-window controls editor and
+pacing. A complete natural campaign and physical
 controller acceptance remain open.
 
 ## Build and run
@@ -31,13 +31,16 @@ To build the SDL3 candidate, add `-Backend SDL3`. It fetches checksum-pinned SDL
 3.4.18, FluidSynth 2.6.1 and the GeneralUser GS instrument bank, and shares the
 same game/settings owners. Music timbre differs from the Windows system synth;
 listening acceptance remains open. Use `-NoDeploy` to keep root `blaze.exe` on
-the stable Win32 backend. SDL3 is not yet a Unix runtime: the F10 editor and
-installed-user paths remain to be connected. CD playback remains deferred.
+the stable Win32 backend. SDL3 is not yet a Unix runtime: case-aware asset lookup
+and installed-user paths remain to be connected. CD playback remains deferred.
 
 Arrow keys move/navigate, **Z** fires/confirms, **X** uses the ship ability/cancels,
 **Esc** pauses, **F2** returns to title, **F9** exits and **F10** edits controls.
 Keyboard and joystick bindings are saved in `dat/BlzCtrl.ini`; options and
 scores/unlocks retain the original two INI filenames. First launch is windowed.
+In the SDL controls menu, click or use arrows/Tab and Enter; Backspace unbinds,
+Esc cancels capture/editing, and Save applies changes. Page Up/Down can set pad
+button numbers without a connected controller. F10 always stays reserved.
 The original `Time=40` cadence is 25 simulation ticks per second.
 Use `--mute` for a quiet session. CD playback remains deferred.
 

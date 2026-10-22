@@ -672,13 +672,13 @@ stores progress only, not a resumable campaign or mid-mission state.
 The optional `BLAZE_PLATFORM=SDL3` application uses the same `BlazeApp` and game
 renderer. A streaming RGBA texture expands the authoritative indexed framebuffer;
 no parallel game-state representation exists. SDL owns its window, renderer,
-texture and current joystick; disconnect/editor changes close that joystick.
+texture and current joystick; disconnect/applied device changes close that joystick.
 Keyboard IDs remain the persisted VK format, translated explicitly to SDL keys;
 unmapped IDs fail visibly instead of being ignored. SDL does not capture the
 mouse or accept unfocused gameplay input. Windowed/letterboxed/centered display
-and monotonic `Time` deadlines retain the existing simulation cadence. This first
-candidate explicitly retains Windows MIDI and the Windows F10 editor; it is not
-yet a portable Unix application. The default Win32 target remains available.
+and monotonic `Time` deadlines retain the existing simulation cadence. MIDI and
+F10 now use SDL-compatible owners described below; case-aware assets and writable
+user paths still block Unix applications. The default Win32 target remains available.
 
 Live Ghidra audit of the remaining legacy keys (2026-10-21):
 - `Clear`: 0x401e8c reads it once into application offset 0x98. No subsequent
@@ -723,7 +723,7 @@ retry and focus gating use no mouse capture or background input. Native joystick
 restores an original dependency (0x4245c0 uses joyGetPosEx); F10's key-remapping
 editor is an enhancement, not a claimed original UI reconstruction.
 
-The owned editor borrows the parent HWND and edits one temporary settings value.
+The Win32 editor borrows the parent HWND and edits one temporary settings value.
 Save validates and atomically writes only `dat/BlzCtrl.ini`; Cancel
 leaves the applied bindings untouched. A failed write restores prior bindings.
 Gameplay uses pause reason 4 while the editor pumps audio/messages; closing it
@@ -752,3 +752,27 @@ PCM has a separate owner/stream and keeps running during MIDI I/O. Game pause
 continues asynchronous music/SFX, matching the recovered behavior. CD is explicit
 unsupported in this candidate. Win32 retains the independent original MCI worker
 for comparison; no SDL media call re-enters it.
+
+## SDL controls editor
+
+`SdlPlatform` owns an embedded `BlazeSdlControls` editor and its temporary controls
+value. F10 pauses simulation with reason 4 while the existing SDL event/presentation
+loop keeps running. It neither edits the game frame nor creates child windows.
+The fixed ASCII pixel menu uses SDL's built-in bitmap glyphs and restores render
+scale/blend state after drawing. Mouse positions use the same centered 320x240
+transform; keyboard/Tab navigation also works without a pointer or controller.
+
+`sdl_keys.h` maps supported legacy VK-numbered persisted keys both ways; SDL
+scancodes never enter the INI. Key capture excludes F10, Esc cancels capture, and
+Backspace clears a binding. Pad capture uses only the selected preview device,
+with 0..32 manual button selection also available. That preview handle belongs
+only to the editor and closes on save/cancel/defaults/device change/exit.
+Focus loss or device removal cancels capture; editing never samples game input.
+
+Save atomically writes only BlzCtrl.ini using the existing writer before replacing
+the applied value. Failure leaves the editor open and applied bindings intact.
+Cancel leaves disk and live bindings untouched. Closing clears only pause reason
+4, preserving user/focus pause, and gates held actions until neutral. It keeps
+existing keyboard/pad samples rather than manufacturing a neutral state by
+resetting/reopening them; applied device changes trigger fresh discovery.
+No SDL editor path calls the Win32 controls editor.

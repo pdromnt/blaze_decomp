@@ -4,7 +4,7 @@ Targets: Windows x86/x64/ARM64, Linux x64/ARM64, macOS ARM64. Windows x86/x64
 currently run the application; ARM64 Windows is configured but not locally built.
 Unix CI checks the ordinary-C core and shared settings. The optional SDL3 Windows
 candidate now runs the real application with SDL presentation/input/timing; it
-uses SDL PCM/FluidSynth MIDI and retains the Windows F10 editor. Default remains
+uses SDL PCM/FluidSynth MIDI and an in-window SDL controls editor. Default remains
 Win32. No Unix runtime or ARM execution is claimed at this checkpoint.
 
 ## Keep the game and its owners
@@ -31,8 +31,13 @@ Do not add a second writable game state or redesign the renderer.
 2. **SDL application, window/input/pacing.** SDL 3.4.18 is pinned/checksummed and
    statically linked in the Windows candidate. Its window/renderer/streaming RGBA
    texture, palette expansion, nearest-neighbor scaling, action masks and monotonic
-   frame clock are connected. F10 still opens the Win32 editor; replace that
-   dependency before enabling Unix. Preserve the current
+   frame clock are connected. F10 now opens the SDL controls menu, with mouse/
+   keyboard editing, legacy key-ID capture, controller selection/button binding,
+   deadzone, Defaults/Save/Cancel and write-failure recovery. A temporary value is
+   applied only after atomic persistence. Focus loss/disconnect cancels capture;
+   closing releases the preview pad and requires neutral input before play resumes.
+   The SDL application no longer includes Windows headers or the HWND editor.
+   Preserve the current
    palette framebuffer, letterboxing and all screen modes without desktop changes.
    Validate keyboard/gamepad/joystick hotplug, F10 editor, focus/minimize/restore,
    pause, main/quit and bounded hidden/scripted runs. Devices/window/texture have
@@ -42,7 +47,8 @@ Do not add a second writable game state or redesign the renderer.
 3. **Complete PCM and MIDI lifecycle.** SDL PCM now feeds the existing mixer
    through a device callback, independently of frame work, with one bank/mixer and
    the stream lock around play/clear/mix. Its owned device closes before samples
-   are freed. The F10 editor borrows an idle callback rather than an audio type.
+   are freed. The SDL F10 menu runs in the main event loop with simulation paused;
+   both audio owners continue independently. Win32 retains its idle callback.
    Exact multi-rate/clipping/voice tests and dummy/WASAPI stalls/reset/reopen pass.
    Portable MIDI now uses shared FluidSynth 2.6.1, built from pinned source with
    its native sample-timed SMF player. A worker owns synth, two song slots and a

@@ -1,4 +1,6 @@
 /* Exercise the real SDL renderer and virtual input without focus or real input. */
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 #define SDL_MAIN_HANDLED
 #define main blaze_sdl_entry
 #include "../../platform/sdl.c"
@@ -7,13 +9,18 @@
 static int rgb(SDL_Surface *s,int x,int y,unsigned r,unsigned g,unsigned b) {
     Uint8 rr,gg,bb,aa;return SDL_ReadSurfacePixel(s,x,y,&rr,&gg,&bb,&aa) && rr==r && gg==g && bb==b;
 }
+static void press(SdlPlatform *p,BlazeApp *a,SDL_Scancode scan) {
+    SDL_Event e={0};e.type=SDL_EVENT_KEY_DOWN;e.key.windowID=SDL_GetWindowID(p->window);e.key.scancode=scan;
+    platform_event(p,a,&e,0);e.type=SDL_EVENT_KEY_UP;platform_event(p,a,&e,0);
+}
 int main(int argc,char **argv) {
     SdlPlatform *p=calloc(1,sizeof(*p));BlazeFrame *frame=calloc(1,sizeof(*frame));
     SDL_Surface *readback=NULL;SDL_JoystickID virtual_id=0;SDL_VirtualJoystickDesc desc;
     bool keys[SDL_SCANCODE_COUNT]={0};BlazeControls c;unsigned i;int result=1;
-    BlazeSdlAudio audio={0};
+    BlazeSdlAudio audio={0};BlazeApp *app=calloc(1,sizeof(*app));
     HWND foreground=GetForegroundWindow();
-    SDL_SetMainReady();CHECK(argc==2 && p && frame && SDL_Init(SDL_INIT_VIDEO|SDL_INIT_JOYSTICK));
+    SDL_SetMainReady();CHECK(SDL_SetHint(SDL_HINT_AUDIO_DRIVER,"dummy"));
+    CHECK(argc==3 && p && frame && app && SDL_Init(SDL_INIT_VIDEO|SDL_INIT_JOYSTICK));
     CHECK(SDL_CreateWindowAndRenderer("BLAZE",640,480,SDL_WINDOW_HIDDEN,&p->window,&p->renderer));
     CHECK(!strcmp(SDL_GetWindowTitle(p->window),"BLAZE") && GetForegroundWindow()==foreground);
     {HWND hwnd=(HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(p->window),SDL_PROP_WINDOW_WIN32_HWND_POINTER,NULL);
@@ -51,7 +58,80 @@ int main(int argc,char **argv) {
     controls_key(&c,"ButtonFire",32);CHECK(SDL_SetJoystickVirtualHat(p->joystick,0,SDL_HAT_CENTERED) && SDL_SetJoystickVirtualButton(p->joystick,31,true));
     SDL_UpdateJoysticks();CHECK(joystick_actions(&c,p->joystick)==BLAZE_CONFIRM);
     CHECK(!poll_input(p) && GetForegroundWindow()==foreground);
-    CHECK(SDL_DetachVirtualJoystick(virtual_id));virtual_id=0;CHECK(!SDL_JoystickConnected(p->joystick));
+    {
+        SDL_Event event={0};BlazeSettings reload={0};char rop[1200],preview[1200],saved_path[1200];unsigned tick,n;
+        CHECK(blaze_path(rop,sizeof(rop),SDL_GetBasePath(),"resources/rop.bin") && blaze_app_open(app,argv[1],rop));
+        CHECK(blaze_settings_paths(&p->files,argv[2]));controls_defaults(&p->files.controls);p->focused=1;
+        remove(p->files.controls_path);tick=app->tick;
+        press(p,app,SDL_SCANCODE_F10);CHECK(p->editor.active && app->pause_flags==4);
+        for(n=0;n<6;++n)press(p,app,SDL_SCANCODE_DOWN);
+        press(p,app,SDL_SCANCODE_RETURN);CHECK(p->editor.capture==0);
+        press(p,app,SDL_SCANCODE_A);CHECK(p->editor.value.keys[4]=='A' && p->files.controls.keys[4]=='Z');
+        CHECK(blaze_app_tick(app,BLAZE_CONFIRM) && app->tick==tick);
+        press(p,app,SDL_SCANCODE_ESCAPE);CHECK(!p->editor.active && !app->pause_flags && p->files.controls.keys[4]=='Z');
+        {FILE *f=fopen(p->files.controls_path,"rb");if(f)fclose(f);CHECK(!f);}
+        press(p,app,SDL_SCANCODE_F10);
+        press(p,app,SDL_SCANCODE_DOWN);press(p,app,SDL_SCANCODE_RIGHT);CHECK(p->editor.value.deadzone==30);
+        for(n=0;n<5;++n)press(p,app,SDL_SCANCODE_DOWN);
+        press(p,app,SDL_SCANCODE_RETURN);press(p,app,SDL_SCANCODE_BACKSPACE);CHECK(!p->editor.value.keys[4]);
+        press(p,app,SDL_SCANCODE_RETURN);press(p,app,SDL_SCANCODE_F10);CHECK(p->editor.active && !p->editor.value.keys[4]);
+        press(p,app,SDL_SCANCODE_RETURN);press(p,app,SDL_SCANCODE_RCTRL);CHECK(p->editor.value.keys[4]==0x11);
+        press(p,app,SDL_SCANCODE_RETURN);press(p,app,SDL_SCANCODE_A);
+        press(p,app,SDL_SCANCODE_RIGHT);press(p,app,SDL_SCANCODE_RETURN);CHECK(p->editor.capture==1);
+        event.type=SDL_EVENT_JOYSTICK_BUTTON_DOWN;event.jbutton.which=virtual_id;event.jbutton.button=31;
+        CHECK(!platform_event(p,app,&event,0) && p->editor.value.buttons[4]==32 && p->editor.capture==-1);
+        press(p,app,SDL_SCANCODE_RETURN);CHECK(p->editor.capture==1);
+        event.type=SDL_EVENT_WINDOW_FOCUS_LOST;event.window.windowID=SDL_GetWindowID(p->window);
+        CHECK(!platform_event(p,app,&event,0) && p->editor.capture==-1 && !p->focused);
+        press(p,app,SDL_SCANCODE_F10);CHECK(p->editor.active);
+        event.type=SDL_EVENT_WINDOW_FOCUS_GAINED;CHECK(!platform_event(p,app,&event,0));
+        event.type=SDL_EVENT_KEY_UP;event.key.windowID=SDL_GetWindowID(p->window);CHECK(!platform_event(p,app,&event,0));
+        CHECK(render_frame(p,frame) && blaze_sdl_controls_draw(&p->editor,p->renderer));
+        readback=SDL_RenderReadPixels(p->renderer,NULL);CHECK(readback && rgb(readback,2,2,8,12,20));
+        CHECK(blaze_path(preview,sizeof(preview),argv[2],"editor.bmp") && SDL_SaveBMP(readback,preview));
+        SDL_DestroySurface(readback);readback=NULL;
+        {float x,y;CHECK(SDL_GetRenderScale(p->renderer,&x,&y) && x==1 && y==1);}
+        for(n=0;n<6;++n)press(p,app,SDL_SCANCODE_DOWN);CHECK(p->editor.row==12);
+        strcpy(saved_path,p->files.controls_path);
+        CHECK(blaze_path(p->files.controls_path,sizeof(p->files.controls_path),argv[2],"missing/BlzCtrl.ini"));
+        press(p,app,SDL_SCANCODE_RETURN);CHECK(p->editor.active && p->editor.failed && p->files.controls.keys[4]=='Z');
+        strcpy(p->files.controls_path,saved_path);press(p,app,SDL_SCANCODE_RETURN);
+        CHECK(!p->editor.active && !app->pause_flags && p->files.controls.keys[4]=='A' && p->files.controls.buttons[4]==32);
+        CHECK(blaze_settings_paths(&reload,argv[2]) && blaze_settings_load(&reload,app));
+        CHECK(reload.controls.keys[4]=='A' && reload.controls.buttons[4]==32 && reload.controls.deadzone==30);
+        pad_refresh(p);CHECK(p->joystick && p->release_inputs);
+        /* Reopening the virtual driver resets its samples; inject a physical
+           button still held as the newly applied controls resume. */
+        CHECK(SDL_SetJoystickVirtualButton(p->joystick,31,true));SDL_UpdateJoysticks();
+        CHECK(!resume_actions(p,joystick_actions(&p->files.controls,p->joystick)) && p->release_inputs);
+        CHECK(SDL_SetJoystickVirtualButton(p->joystick,31,false));SDL_UpdateJoysticks();
+        CHECK(!resume_actions(p,joystick_actions(&p->files.controls,p->joystick)) && !p->release_inputs);
+        CHECK(SDL_SetJoystickVirtualButton(p->joystick,31,true));SDL_UpdateJoysticks();
+        CHECK(resume_actions(p,joystick_actions(&p->files.controls,p->joystick))==BLAZE_CONFIRM);
+        blaze_app_pause(app,2,1);press(p,app,SDL_SCANCODE_F10);CHECK(app->pause_flags==6);
+        for(n=0;n<11;++n)press(p,app,SDL_SCANCODE_DOWN);press(p,app,SDL_SCANCODE_RETURN);
+        CHECK(p->editor.value.keys[4]=='Z' && p->editor.value.deadzone==25 && p->files.controls.keys[4]=='A');
+        press(p,app,SDL_SCANCODE_ESCAPE);CHECK(app->pause_flags==2);blaze_app_pause(app,2,0);
+        for(n=0;n<12;++n) {press(p,app,SDL_SCANCODE_F10);CHECK(p->editor.active);press(p,app,SDL_SCANCODE_ESCAPE);CHECK(!p->editor.pad);}
+        CHECK(p->joystick && SDL_GetJoystickFromID(virtual_id)==p->joystick);
+        /* Pointer coordinates use the same output transform as the pixel menu.
+           Synthetic events never move or capture the host pointer. */
+        press(p,app,SDL_SCANCODE_F10);event.type=SDL_EVENT_MOUSE_BUTTON_DOWN;event.button.windowID=SDL_GetWindowID(p->window);
+        event.button.button=SDL_BUTTON_LEFT;event.button.x=280;event.button.y=238;
+        CHECK(!platform_event(p,app,&event,0) && p->editor.row==6 && !p->editor.column && p->editor.capture==0);
+        press(p,app,SDL_SCANCODE_B);CHECK(p->editor.value.keys[4]=='B');
+        event.button.x=500;event.button.y=378;CHECK(!platform_event(p,app,&event,0) && !p->editor.active && p->files.controls.keys[4]=='A');
+        press(p,app,SDL_SCANCODE_F10);event.type=SDL_EVENT_QUIT;CHECK(platform_event(p,app,&event,0));
+        blaze_sdl_controls_close(&p->editor);blaze_app_pause(app,4,0);
+        press(p,app,SDL_SCANCODE_F10);for(n=0;n<6;++n)press(p,app,SDL_SCANCODE_DOWN);
+        press(p,app,SDL_SCANCODE_RIGHT);press(p,app,SDL_SCANCODE_RETURN);CHECK(p->editor.capture==1 && p->editor.pad);
+        event.type=SDL_EVENT_JOYSTICK_REMOVED;event.jdevice.which=virtual_id;
+        CHECK(SDL_DetachVirtualJoystick(virtual_id));virtual_id=0;
+        CHECK(!platform_event(p,app,&event,0) && p->editor.capture==-1 && !p->editor.pad && p->editor.active);
+        press(p,app,SDL_SCANCODE_ESCAPE);
+        CHECK(GetForegroundWindow()==foreground);remove(p->files.controls_path);
+    }
+    CHECK(!SDL_JoystickConnected(p->joystick));
     p->files.controls.device=0;pad_refresh(p);CHECK(!p->joystick);
     {
         BlazeMusicStatus status={0};unsigned n;
@@ -68,14 +148,27 @@ int main(int argc,char **argv) {
         }
         audio.media.stop(audio.media.context);blaze_sdl_audio_close(&audio);
     }
-    puts("SDL renderer colors/scale/centered mode, saved-key mapping, virtual axes/hats/button32 and detached-owner cleanup passed");result=0;
+    {
+        uint64_t submitted;unsigned tick=app->tick;
+        CHECK(blaze_sdl_audio_open(&audio,argv[1],0) && !strcmp(SDL_GetCurrentAudioDriver(),"dummy"));
+        audio.media.load(audio.media.context,0,"blz_sg1f.mid",1,0);audio.media.play(audio.media.context,0,1);
+        press(p,app,SDL_SCANCODE_F10);CHECK(p->editor.active && app->pause_flags==4);
+        audio.media.sound(audio.media.context,BLAZE_SHT);submitted=blaze_sdl_pcm_submitted(&audio.pcm);
+        CHECK(present(p,&app->frame));SDL_Delay(400);
+        CHECK(blaze_sdl_pcm_submitted(&audio.pcm)>submitted+6000 && app->tick==tick && p->editor.active);
+        {BlazeMusicStatus status;blaze_sdl_music_status(audio.music,&status);CHECK(status.playing && !status.failed);}
+        press(p,app,SDL_SCANCODE_ESCAPE);CHECK(!app->pause_flags);blaze_sdl_audio_close(&audio);
+    }
+    puts("SDL rendering/input and F10 capture/cancel/defaults/save/failure/focus/pause/close lifecycle passed");result=0;
 done:
     blaze_sdl_audio_close(&audio);
+    if(app)blaze_app_close(app);
+    if(p)blaze_sdl_controls_close(&p->editor);
     if(virtual_id)SDL_DetachVirtualJoystick(virtual_id);
     if(p && p->joystick)SDL_CloseJoystick(p->joystick);
     if(readback)SDL_DestroySurface(readback);
     if(p && p->texture)SDL_DestroyTexture(p->texture);
     if(p && p->renderer)SDL_DestroyRenderer(p->renderer);
     if(p && p->window)SDL_DestroyWindow(p->window);
-    SDL_Quit();free(p);free(frame);return result;
+    SDL_Quit();free(p);free(frame);free(app);return result;
 }

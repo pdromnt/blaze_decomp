@@ -1,12 +1,10 @@
-/* SDL presentation/input/PCM/timing candidate. Windows MIDI and F10 editor remain
-   explicit native dependencies for this first connected application milestone. */
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+/* Native SDL application; Win32 remains a separate comparison backend. */
 #include "sdl_audio.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include "settings.h"
-#include "windows_input.h"
+#include "sdl_controls.h"
+#include "sdl_keys.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,45 +12,8 @@
 typedef struct {
     SDL_Window *window;SDL_Renderer *renderer;SDL_Texture *texture;
     BlazeSettings files;SDL_Joystick *joystick;
-    int mode;
+    int mode,focused,release_inputs;BlazeSdlControls editor;
 } SdlPlatform;
-/* Fixed storage format, independent of SDL physical scancode numbering. */
-static SDL_Scancode key_scan(int key) {
-    if(key>='A' && key<='Z')return SDL_GetScancodeFromKey((SDL_Keycode)(SDLK_A+key-'A'),NULL);
-    if(key>='1' && key<='9')return (SDL_Scancode)(SDL_SCANCODE_1+key-'1');
-    if(key>=0x70 && key<=0x87)return (SDL_Scancode)(key<0x7c?SDL_SCANCODE_F1+key-0x70:SDL_SCANCODE_F13+key-0x7c);
-    if(key>=0x60 && key<=0x69)return key==0x60?SDL_SCANCODE_KP_0:(SDL_Scancode)(SDL_SCANCODE_KP_1+key-0x61);
-    switch(key) {
-    case '0':return SDL_SCANCODE_0;case 8:return SDL_SCANCODE_BACKSPACE;case 9:return SDL_SCANCODE_TAB;
-    case 13:return SDL_SCANCODE_RETURN;case 0x10:return SDL_SCANCODE_LSHIFT;case 0x11:return SDL_SCANCODE_LCTRL;
-    case 0x12:return SDL_SCANCODE_LALT;case 0x13:return SDL_SCANCODE_PAUSE;case 0x14:return SDL_SCANCODE_CAPSLOCK;
-    case 0x1b:return SDL_SCANCODE_ESCAPE;case 0x20:return SDL_SCANCODE_SPACE;
-    case 0x21:return SDL_SCANCODE_PAGEUP;case 0x22:return SDL_SCANCODE_PAGEDOWN;case 0x23:return SDL_SCANCODE_END;
-    case 0x24:return SDL_SCANCODE_HOME;case 0x25:return SDL_SCANCODE_LEFT;case 0x26:return SDL_SCANCODE_UP;
-    case 0x27:return SDL_SCANCODE_RIGHT;case 0x28:return SDL_SCANCODE_DOWN;case 0x2c:return SDL_SCANCODE_PRINTSCREEN;
-    case 0x2d:return SDL_SCANCODE_INSERT;case 0x2e:return SDL_SCANCODE_DELETE;
-    case 0x5b:return SDL_SCANCODE_LGUI;case 0x5c:return SDL_SCANCODE_RGUI;case 0x5d:return SDL_SCANCODE_APPLICATION;
-    case 0x6a:return SDL_SCANCODE_KP_MULTIPLY;case 0x6b:return SDL_SCANCODE_KP_PLUS;
-    case 0x6d:return SDL_SCANCODE_KP_MINUS;case 0x6e:return SDL_SCANCODE_KP_PERIOD;case 0x6f:return SDL_SCANCODE_KP_DIVIDE;
-    case 0x90:return SDL_SCANCODE_NUMLOCKCLEAR;case 0x91:return SDL_SCANCODE_SCROLLLOCK;
-    case 0xa0:return SDL_SCANCODE_LSHIFT;case 0xa1:return SDL_SCANCODE_RSHIFT;
-    case 0xa2:return SDL_SCANCODE_LCTRL;case 0xa3:return SDL_SCANCODE_RCTRL;
-    case 0xa4:return SDL_SCANCODE_LALT;case 0xa5:return SDL_SCANCODE_RALT;
-    case 0xba:return SDL_SCANCODE_SEMICOLON;case 0xbb:return SDL_SCANCODE_EQUALS;case 0xbc:return SDL_SCANCODE_COMMA;
-    case 0xbd:return SDL_SCANCODE_MINUS;case 0xbe:return SDL_SCANCODE_PERIOD;case 0xbf:return SDL_SCANCODE_SLASH;
-    case 0xc0:return SDL_SCANCODE_GRAVE;case 0xdb:return SDL_SCANCODE_LEFTBRACKET;case 0xdc:return SDL_SCANCODE_BACKSLASH;
-    case 0xdd:return SDL_SCANCODE_RIGHTBRACKET;case 0xde:return SDL_SCANCODE_APOSTROPHE;
-    default:return SDL_SCANCODE_UNKNOWN;
-    }
-}
-static int key_down(const bool *keys,int key) {
-    SDL_Scancode scan=key_scan(key);
-    if(key==0x10)return keys[SDL_SCANCODE_LSHIFT] || keys[SDL_SCANCODE_RSHIFT];
-    if(key==0x11)return keys[SDL_SCANCODE_LCTRL] || keys[SDL_SCANCODE_RCTRL];
-    if(key==0x12)return keys[SDL_SCANCODE_LALT] || keys[SDL_SCANCODE_RALT];
-    if(key==13)return keys[SDL_SCANCODE_RETURN] || keys[SDL_SCANCODE_KP_ENTER];
-    return scan!=SDL_SCANCODE_UNKNOWN && keys[scan];
-}
 static int bindings_supported(const BlazeControls *c) {
     unsigned i;for(i=0;i<BLAZE_BINDINGS;++i)if(c->keys[i] && key_scan(c->keys[i])==SDL_SCANCODE_UNKNOWN) {
         fprintf(stderr,"SDL input: saved key ID %d has no mapping yet (%s)\n",c->keys[i],binding_names[i]);return 0;
@@ -65,7 +26,7 @@ static void pad_refresh(SdlPlatform *p) {
     if(p->files.controls.device==0) {if(p->joystick)SDL_CloseJoystick(p->joystick);p->joystick=NULL;return;}
     if(p->joystick)return;
     ids=SDL_GetJoysticks(&count);index=p->files.controls.device<0?0:p->files.controls.device-1;
-    if(ids && index<count)p->joystick=SDL_OpenJoystick(ids[index]);
+    if(ids && index<count) {p->joystick=SDL_OpenJoystick(ids[index]);if(p->joystick)SDL_UpdateJoysticks();}
     SDL_free(ids);
 }
 static unsigned keyboard_actions(const BlazeControls *c,const bool *keys) {
@@ -88,10 +49,13 @@ static unsigned joystick_actions(const BlazeControls *c,SDL_Joystick *joystick) 
     for(i=0;i<BLAZE_BINDINGS;++i)if(c->buttons[i]>0 && c->buttons[i]<=buttons && SDL_GetJoystickButton(joystick,c->buttons[i]-1))mask|=binding_actions[i];
     return mask;
 }
+static unsigned resume_actions(SdlPlatform *p,unsigned actions) {
+    if(p->release_inputs) {if(!actions)p->release_inputs=0;return 0;}return actions;
+}
 static unsigned poll_input(SdlPlatform *p) {
     if(!(SDL_GetWindowFlags(p->window)&SDL_WINDOW_INPUT_FOCUS))return 0;
     pad_refresh(p);
-    return keyboard_actions(&p->files.controls,SDL_GetKeyboardState(NULL))|joystick_actions(&p->files.controls,p->joystick);
+    return resume_actions(p,keyboard_actions(&p->files.controls,SDL_GetKeyboardState(NULL))|joystick_actions(&p->files.controls,p->joystick));
 }
 static int display(void *context,int mode) {
     SdlPlatform *p=context;
@@ -121,7 +85,33 @@ static int render_frame(SdlPlatform *p,const BlazeFrame *frame) {
         SDL_RenderTexture(p->renderer,p->texture,NULL,&dest);
 }
 static int present(SdlPlatform *p,const BlazeFrame *frame) {
-    return render_frame(p,frame) && SDL_RenderPresent(p->renderer);
+    return render_frame(p,frame) && blaze_sdl_controls_draw(&p->editor,p->renderer) && SDL_RenderPresent(p->renderer);
+}
+/* One event path is used by the application and injected-event checks. */
+static int platform_event(SdlPlatform *p,BlazeApp *a,const SDL_Event *event,int hidden) {
+    int edited,previous_device=p->files.controls.device;
+    if(event->type==SDL_EVENT_QUIT)return 1;
+    if(event->type==SDL_EVENT_WINDOW_CLOSE_REQUESTED && event->window.windowID==SDL_GetWindowID(p->window))return 1;
+    if((event->type==SDL_EVENT_WINDOW_FOCUS_LOST || event->type==SDL_EVENT_WINDOW_MINIMIZED) && event->window.windowID==SDL_GetWindowID(p->window)) {
+        p->focused=0;if(p->editor.active)blaze_sdl_controls_focus(&p->editor);return 0;
+    }
+    if(event->type==SDL_EVENT_WINDOW_FOCUS_GAINED && event->window.windowID==SDL_GetWindowID(p->window)) {p->focused=1;return 0;}
+    if(hidden || !p->focused)return 0;
+    if(event->type>=SDL_EVENT_KEY_DOWN && event->type<=SDL_EVENT_KEY_UP && event->key.windowID!=SDL_GetWindowID(p->window))return 0;
+    if(p->editor.active) {
+        if(event->type==SDL_EVENT_MOUSE_BUTTON_DOWN && event->button.button==SDL_BUTTON_LEFT && event->button.windowID==SDL_GetWindowID(p->window))
+            edited=blaze_sdl_controls_click(&p->editor,&p->files,p->renderer,event->button.x,event->button.y);
+        else edited=blaze_sdl_controls_event(&p->editor,&p->files,event);
+        if(edited) {
+            blaze_app_pause(a,4,0);p->release_inputs=1;
+            /* Keep sampled held inputs until their actual release. Clearing the
+               keyboard or reopening an unchanged pad creates a false neutral. */
+            if(previous_device!=p->files.controls.device && p->joystick) {SDL_CloseJoystick(p->joystick);p->joystick=NULL;}
+        }
+    } else if(event->type==SDL_EVENT_KEY_DOWN && event->key.scancode==SDL_SCANCODE_F10 && !event->key.repeat) {
+        blaze_sdl_controls_open(&p->editor,&p->files.controls);blaze_app_pause(a,4,1);
+    }
+    return 0;
 }
 static int dump_frame(const char *path,const BlazeFrame *frame) {
     FILE *f=fopen(path,"wb");unsigned i;if(!f)return 0;
@@ -178,28 +168,26 @@ int main(int argc,char **argv) {
     if(!display(p,a->display<2?a->display:1))goto done;
     a->display=p->mode;a->settings_context=p;a->apply_display=display;a->save_options=options;a->save_progress=progress;
     if(!hidden && !SDL_ShowWindow(p->window))goto done;
+    p->focused=(SDL_GetWindowFlags(p->window)&SDL_WINDOW_INPUT_FOCUS)!=0;
     started=next=SDL_GetTicksNS();period=a->frame_ms;result=0;
     while(!quit && (!limit || frames<limit)) {
         SDL_Event event;
-        while(SDL_PollEvent(&event)) {
-            if(event.type==SDL_EVENT_QUIT)quit=1;
-            if(!hidden && event.type==SDL_EVENT_KEY_DOWN && event.key.scancode==SDL_SCANCODE_F10 && !event.key.repeat) {
-                HWND hwnd=(HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(p->window),SDL_PROP_WINDOW_WIN32_HWND_POINTER,NULL);
-                BlazeControls previous_controls=p->files.controls;int edited;
-                blaze_app_pause(a,4,1);edited=hwnd?controls_edit(hwnd,&p->files.controls,blaze_sdl_audio_pump,audio):-1;blaze_app_pause(a,4,0);
-                if(edited<0 || (edited && (!bindings_supported(&p->files.controls) || !blaze_settings_controls(&p->files)))) {
-                    p->files.controls=previous_controls;SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,"BLAZE controls","Cannot save controls. Previous bindings retained.",p->window);
-                }
-                if(p->joystick)SDL_CloseJoystick(p->joystick);p->joystick=NULL;SDL_ResetKeyboard();next=SDL_GetTicksNS();previous=0;
-            }
-        }
+        while(SDL_PollEvent(&event))if(platform_event(p,a,&event,hidden))quit=1;
         if(quit)break;
+        if(blaze_sdl_pcm_failed(&audio->pcm)) {fprintf(stderr,"SDL PCM submission failed\n");result=1;break;}
+        {BlazeMusicStatus music;blaze_sdl_music_status(audio->music,&music);
+        if(music.failed) {fprintf(stderr,"SDL MIDI worker failed\n");result=1;break;}}
         if(!hidden && frames && (!(SDL_GetWindowFlags(p->window)&SDL_WINDOW_INPUT_FOCUS) || (SDL_GetWindowFlags(p->window)&SDL_WINDOW_MINIMIZED))) {
             blaze_app_pause(a,1,1);blaze_sdl_audio_pump(audio);
             if(!present(p,&a->frame)) {result=1;break;}
             next=SDL_GetTicksNS();previous=0;SDL_Delay(20);continue;
         }
         blaze_app_pause(a,1,0);
+        if(p->editor.active) {
+            blaze_sdl_audio_pump(audio);
+            if(!present(p,&a->frame)) {result=1;break;}
+            next=SDL_GetTicksNS();previous=0;SDL_Delay(20);continue;
+        }
         {Uint64 now=SDL_GetTicksNS();if(now<next) {SDL_DelayPrecise(next-now);continue;}}
         {Uint64 begin=SDL_GetTicksNS();double ms;
             unsigned actions=script && frames<script_size/4?blaze_le32(script+(size_t)frames*4):hidden?0:poll_input(p);
@@ -208,9 +196,6 @@ int main(int argc,char **argv) {
             if(!blaze_app_tick(a,actions)) {result=1;break;}
             if(!present(p,&a->frame)) {result=1;break;}
             blaze_sdl_audio_pump(audio);++frames;
-            if(blaze_sdl_pcm_failed(&audio->pcm)) {fprintf(stderr,"SDL PCM submission failed\n");result=1;break;}
-            {BlazeMusicStatus music;blaze_sdl_music_status(audio->music,&music);
-            if(music.failed) {fprintf(stderr,"SDL MIDI worker failed\n");result=1;break;}}
             ms=(double)(SDL_GetTicksNS()-begin)/1000000;work_total+=ms;if(ms>work_max)work_max=ms;if(ms>period)++overruns;
         }
         if(a->state==BLAZE_BLOCKED) {result=2;break;}if(a->state==BLAZE_EXIT)break;
@@ -230,6 +215,7 @@ int main(int argc,char **argv) {
     }
 done:
     if(result)fprintf(stderr,"SDL candidate: %s; %s\n",initialized?SDL_GetError():"startup failed",a?a->error:"");
+    if(p)blaze_sdl_controls_close(&p->editor);
     if(p && p->joystick)SDL_CloseJoystick(p->joystick);
     if(p && p->texture)SDL_DestroyTexture(p->texture);
     if(p && p->renderer)SDL_DestroyRenderer(p->renderer);
