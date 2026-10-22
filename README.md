@@ -7,7 +7,7 @@ pause, controls and score/unlock persistence are connected.
 
 Windows x86/x64 are locally tested. Native CI has built and run the SDL application
 on macOS ARM64 and Linux x64/ARM64, including deterministic gameplay and packaged
-launches. Windows ARM64 CI is still pending. The SDL3 backend handles presentation,
+launches. All six requested architectures pass native CI. The SDL3 backend handles presentation,
 keyboard/joystick input, PCM SFX, software MIDI, controls editing and pacing.
 A complete natural campaign and real display/audio/controller acceptance remain open.
 ## Build and run
@@ -77,7 +77,7 @@ extraction and executable differential tools. It is not a public build dependenc
 CI builds six SDL application runtimes and preserves a Windows comparison job.
 Download `runtime-<platform>` artifacts from Actions for ZIP/tar.gz/DMG packages
 and SHA-256 checksums. Packaged launches and deterministic gameplay checks precede
-upload; native macOS/Linux results pass; Windows ARM64 remains pending. See
+upload; all six native platform jobs pass. See
 [testing instructions](docs/TESTING.md) and [distribution notes](docs/DISTRIBUTION.md).
 The manually dispatched release workflow requires all six packages from an existing
 tag. Ordinary CI does not publish releases.

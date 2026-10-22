@@ -76,7 +76,7 @@ A separate Windows x64 job preserves the Win32 comparison build.
 Download `runtime-<platform>` from the Actions run. It contains the ZIP, tar.gz or
 DMG plus its SHA-256 sidecar. See [testing](TESTING.md) for installation and manual
 acceptance. macOS includes the original icon at standard/Retina sizes and ad-hoc
-signing; it is not notarized. Mac/Linux native checks, gameplay and packaged launches pass in CI; Windows ARM64 is pending.
+signing; it is not notarized. All six native targets pass checks, gameplay and packaged launches in CI.
 
 The manually dispatched release workflow resolves an existing tag to its commit,
 requires all six packages and verifies their checksums before publishing. Ordinary

@@ -1,8 +1,7 @@
 # SDL3 and platform implementation plan
 
 Targets: Windows x86/x64/ARM64, Linux x64/ARM64, macOS ARM64. Native CI now builds,
-checks and packages actual SDL applications. Mac ARM64, Linux x64/ARM64 and Windows
-x86/x64 jobs pass; Windows ARM64 is pending. Gameplay frames match the Windows
+checks and packages actual SDL applications. All six native targets pass. Gameplay frames match the Windows
 reference, and packages launch from extracted archives or a mounted DMG.
 This is headless CI evidence; real graphics/audio/controller and full campaign
 acceptance remain manual. The local Windows build still defaults to Win32.
@@ -85,7 +84,7 @@ Do not add a second writable game state or redesign the renderer.
    `$ORIGIN`; macOS puts assets in Resources and its dylib in Frameworks with
    `@rpath`. Build trees hard-link immutable assets and seed independent INIs;
    ordinary builds run without `--assets`. Windows x86/x64 are locally verified;
-   Mac/Linux native CI execution passes; Windows ARM64 remains pending.
+   all six native SDL targets pass CI execution.
    Run existing fixtures on all targets,
    then owned bounded platform sessions and manual visible/audio/controller tests.
    Audit integer overflow/shifts/conversions/alignment and pointer assumptions
