@@ -43,6 +43,9 @@ if($Platform.StartsWith('windows-')){
     if($pe -lt 64 -or $pe -gt $bytes.Length-6 -or [BitConverter]::ToUInt32($bytes,$pe) -ne 0x4550){throw 'Invalid PE header.'}
     $expected=@{'windows-x86'=0x14c;'windows-x64'=0x8664;'windows-arm64'=0xaa64}[$Platform]
     if([BitConverter]::ToUInt16($bytes,$pe+4) -ne $expected){throw 'Wrong executable architecture.'}
+    if($identity.Contains('BLAZE_NATIVE_C: SDL3')) {
+        if($pe -gt $bytes.Length-94 -or [BitConverter]::ToUInt16($bytes,$pe+24+68) -ne 2){throw 'SDL application must use the Windows GUI subsystem (no console window).'}
+    }
 }else{
     $description=(& file -b $exe) -join ' '
     if($LASTEXITCODE){throw 'Cannot inspect executable.'}

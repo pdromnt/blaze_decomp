@@ -61,9 +61,10 @@ static unsigned poll_input(SdlPlatform *p) {
 }
 static int display(void *context,int mode) {
     SdlPlatform *p=context;
-    if(mode<0 || mode>4)return 0;
-    if(!SDL_SetWindowFullscreen(p->window,mode>=2))return 0;
-    if(mode<2 && !SDL_SetWindowSize(p->window,320*(mode+1),240*(mode+1)))return 0;
+    int scale=mode==5?3:mode+1,windowed=mode<2 || mode==5;
+    if(mode<0 || mode>5)return 0;
+    if(!SDL_SetWindowFullscreen(p->window,!windowed))return 0;
+    if(windowed && !SDL_SetWindowSize(p->window,320*scale,240*scale))return 0;
     p->mode=mode;return 1;
 }
 static int options(void *context,int level,int screen,int music) {return blaze_settings_options(&((SdlPlatform *)context)->files,level,screen,music);}
@@ -169,7 +170,7 @@ int main(int argc,char **argv) {
     if(!p->texture || !SDL_SetTextureScaleMode(p->texture,SDL_SCALEMODE_NEAREST))goto done;
     /* VSync cannot pace the original 25-tick simulation. */
     if(!SDL_SetRenderVSync(p->renderer,0))goto done;
-    if(!display(p,a->display<2?a->display:1))goto done;
+    if(!display(p,a->display<2 || a->display==5?a->display:1))goto done;
     a->display=p->mode;a->settings_context=p;a->apply_display=display;a->save_options=options;a->save_progress=progress;
     if(!hidden && !SDL_ShowWindow(p->window))goto done;
     p->focused=(SDL_GetWindowFlags(p->window)&SDL_WINDOW_INPUT_FOCUS)!=0;

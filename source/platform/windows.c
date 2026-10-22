@@ -57,16 +57,16 @@ static int settings_location(WindowSettings *s,const char *directory,const char 
    The two legacy 320 modes retain scaled versus centered presentation. */
 static int apply_display(void *context,int mode) {
     WindowSettings *s=context;RECT bounds;DWORD style;MONITORINFO monitor={sizeof(monitor)};
-    if(mode<0 || mode>4)return 0;
-    if(mode<2) {
-        int scale=mode+1;bounds.left=bounds.top=0;bounds.right=320*scale;bounds.bottom=240*scale;
+    if(mode<0 || mode>5)return 0;
+    if(mode<2 || mode==5) {
+        int scale=mode==5?3:mode+1;bounds.left=bounds.top=0;bounds.right=320*scale;bounds.bottom=240*scale;
         style=WS_OVERLAPPEDWINDOW;AdjustWindowRect(&bounds,style,FALSE);
-        if(s->mode>=2 && !SetWindowPos(s->window,NULL,s->windowed.left,s->windowed.top,0,0,SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE))return 0;
+        if(s->mode>=2 && s->mode<=4 && !SetWindowPos(s->window,NULL,s->windowed.left,s->windowed.top,0,0,SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE))return 0;
         SetLastError(0);if(!SetWindowLongPtrA(s->window,GWL_STYLE,style) && GetLastError())return 0;
         if(!SetWindowPos(s->window,NULL,0,0,bounds.right-bounds.left,bounds.bottom-bounds.top,
             SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE|SWP_FRAMECHANGED))return 0;
     } else {
-        if(s->mode<2 && !GetWindowRect(s->window,&s->windowed))return 0;
+        if((s->mode<2 || s->mode==5) && !GetWindowRect(s->window,&s->windowed))return 0;
         if(!GetMonitorInfoA(MonitorFromWindow(s->window,MONITOR_DEFAULTTONEAREST),&monitor))return 0;
         bounds=monitor.rcMonitor;
         SetLastError(0);if(!SetWindowLongPtrA(s->window,GWL_STYLE,WS_POPUP) && GetLastError())return 0;
@@ -96,7 +96,7 @@ static void present_frame(HWND window,HDC dc,const BlazeFrame *frame) {
     {
     WindowSettings *settings=(WindowSettings *)GetPropA(window,"BlazeSettings");
     int width=client.right,height=client.bottom,x=0,y=0;
-    if(settings && settings->mode>=2) {
+    if(settings && settings->mode>=2 && settings->mode<=4) {
         PatBlt(dc,0,0,width,height,BLACKNESS);
         if(settings->mode==3) {width=320;height=240;}
         else if((int64_t)width*240>(int64_t)height*320)width=height*320/240;
@@ -214,7 +214,7 @@ static int windows_run(int argc,char **argv) {
     if(!SetPropA(window,"BlazeSettings",&settings)) {exit_code=1;goto done;}
     /* Launch windowed by default, including automated runs. Full screen requires
        explicit confirmation in Options. */
-    if(!apply_display(&settings,app->display<2?app->display:1)) {exit_code=1;goto done;}
+    if(!apply_display(&settings,app->display<2 || app->display==5?app->display:1)) {exit_code=1;goto done;}
     app->display=settings.mode;app->settings_context=&settings;
     app->apply_display=apply_display;app->save_options=save_options;app->save_progress=save_progress;
     if (!hidden) ShowWindow(window,SW_SHOWNOACTIVATE);

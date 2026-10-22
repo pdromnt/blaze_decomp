@@ -34,10 +34,10 @@ int main(int argc,char **argv) {
     CHECK(SendMessageA(window,WM_GETICON,ICON_SMALL,0)!=0);
     settings.window=window;CHECK(SetPropA(window,"BlazeSettings",&settings));
     before.dmSize=sizeof(before);CHECK(EnumDisplaySettingsA(NULL,ENUM_CURRENT_SETTINGS,&before));
-    for(y=0;y<10;++y) {
-        int mode=(int)(y%5);CHECK(apply_display(&settings,mode));
+    for(y=0;y<12;++y) {
+        int mode=(int)(y%6),scale=mode==5?3:mode+1;CHECK(apply_display(&settings,mode));
         CHECK(GetClientRect(window,&bounds));
-        if(mode<2)CHECK(bounds.right==320*(mode+1) && bounds.bottom==240*(mode+1));
+        if(mode<2 || mode==5)CHECK(bounds.right==320*scale && bounds.bottom==240*scale);
         else CHECK((GetWindowLongPtrA(window,GWL_STYLE)&WS_POPUP)!=0);
         CHECK(!IsWindowVisible(window) && GetForegroundWindow()==foreground);
     }

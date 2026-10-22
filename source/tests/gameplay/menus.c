@@ -105,6 +105,17 @@ int main(int argc,char **argv) {
     for(i=0;i<32;++i)CHECK(blaze_app_tick(a,0));
     CHECK(settle(a) && press(a,BLAZE_CONFIRM) && settle(a));
     CHECK(a->state==BLAZE_OPTIONS);
+    for(i=0;i<4;++i)CHECK(press(a,BLAZE_UP));
+    CHECK(press(a,BLAZE_DOWN) && a->display_pending==0);
+    CHECK(press(a,BLAZE_RIGHT) && a->display_pending==1);
+    CHECK(press(a,BLAZE_RIGHT) && a->display_pending==5);
+    CHECK(press(a,BLAZE_CONFIRM) && a->display==5 && s.mode==5);
+    CHECK(press(a,BLAZE_RIGHT) && a->display_pending==2);
+    CHECK(press(a,BLAZE_LEFT) && a->display_pending==5);
+    CHECK(press(a,BLAZE_LEFT) && a->display_pending==1);
+    CHECK(press(a,BLAZE_LEFT) && a->display_pending==0);
+    CHECK(press(a,BLAZE_CONFIRM) && a->display==0 && s.mode==0);
+    for(i=0;i<3;++i)CHECK(press(a,BLAZE_DOWN));
     s.fail=1;CHECK(!press(a,BLAZE_CONFIRM));CHECK(strstr(a->error,"save user options"));
     result=0;puts("Menu transitions, delayed cues, option transactions, ranking/EOF and repeated teardown passed");
 done:

@@ -41,7 +41,7 @@ int blaze_settings_load(BlazeSettings *s,BlazeApp *a) {
                 if(*end)continue;
                 if(kind==0 && !strcmp(section,"Enh")) {
                     if(!strcmp(key,"Level") && value>=0 && value<=2)a->level=(int)value;
-                    if(!strcmp(key,"Screen") && value>=0 && value<=4)a->display=(int)value;
+                    if(!strcmp(key,"Screen") && value>=0 && value<=5)a->display=(int)value;
                     if(!strcmp(key,"MidPlayer") && value>=0 && value<=5)a->music=(int)value;
                 } else if(kind==2 && !strcmp(section,"Input"))controls_key(&s->controls,key,(int)value);
                 else if(kind==1 && !strcmp(section,"Score")) {

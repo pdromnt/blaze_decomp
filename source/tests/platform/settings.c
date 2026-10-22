@@ -52,6 +52,9 @@ int main(int argc,char **argv) {
         CHECK(contains(collision,"existing-owner"));
     }
     CHECK(blaze_settings_load(&s,a) && a->high_score==7000);
+    for(i=0;i<6;++i) {
+        CHECK(blaze_settings_options(&s,0,(int)i,2) && blaze_settings_load(&s,a) && a->display==(int)i);
+    }
     puts("Shared INI ownership, duplicates, foreign bytes, score/mode reload and exclusive-temp failure passed");result=0;
 done:
     for(i=0;i<created;++i) {snprintf(collision,sizeof(collision),"%s.%lu.%u.tmp",s.score_path,pid,i);remove(collision);}

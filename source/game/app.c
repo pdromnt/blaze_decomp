@@ -32,7 +32,7 @@ static void config(BlazeApp *a, const char *name, int score) {
         if (!score && !strcmp(section,"Enh")) {
             if (!strcmp(key,"Time")) a->frame_ms=(unsigned)clamp(config_integer(value),1,60000);
             if (!strcmp(key,"Level")) a->level=clamp(config_integer(value),0,2);
-            if (!strcmp(key,"Screen")) a->display=clamp(config_integer(value),0,4);
+            if (!strcmp(key,"Screen")) a->display=clamp(config_integer(value),0,5);
             if (!strcmp(key,"MidPlayer")) a->music=clamp(config_integer(value),0,5);
             if (!strcmp(key,"MaxStage")) a->max_stage=(unsigned)clamp(config_integer(value),1,5);
             index=key_index(key,"WeaponName");
@@ -216,7 +216,8 @@ static void select_draw(BlazeApp *a) {
 static void options_draw(BlazeApp *a) {
     static const char *labels[]={"-GAME LEVEL-","-SCREEN MODE-","-MUSIC-","",""};
     static const char *levels[]={"1:EASY","2:NORMAL","3:HARD"};
-    static const char *displays[]={"1:WINDOW 320*240","2:WINDOW 640*480","3:FULL SCALED","4:FULL CENTERED 320*240","5:FULL SCALED 640*480"};
+    /* Keep legacy INI IDs 0..4; ID 5 adds 3x without reinterpreting saves. */
+    static const char *displays[]={"1:WINDOW 320*240","2:WINDOW 640*480","4:FULL SCALED","5:FULL CENTERED 320*240","6:FULL SCALED 640*480","3:WINDOW 960*720"};
     static const char *music[]={"RANDOM","MIDI:MUSHI","MIDI:UMEO","CD:RANDOM","CD:MIDI:MUSHI","CD:UMEO"};
     const char *values[]={levels[a->level_pending],displays[a->display_pending],music[a->music_pending],"HI-SCORE RANKING","EXIT"};
     int i; char line[80];
@@ -427,9 +428,12 @@ int blaze_app_tick(BlazeApp *a, unsigned input) {
         if(actions&BLAZE_UP) {a->option_item=clamp(a->option_item-1,0,4);sound(a,BLAZE_HIT);}
         if(actions&(BLAZE_LEFT|BLAZE_RIGHT)) {
             int *value=a->option_item==0?&a->level_pending:a->option_item==1?&a->display_pending:&a->music_pending;
-            int maximum=a->option_item==0?2:a->option_item==1?4:5;
-            if(actions&BLAZE_LEFT) {if(a->option_item<3)*value=clamp(*value-1,0,maximum);sound(a,BLAZE_HIT);}
-            if(actions&BLAZE_RIGHT) {if(a->option_item<3)*value=clamp(*value+1,0,maximum);sound(a,BLAZE_HIT);}
+            static const int order[]={0,1,5,2,3,4};
+            int maximum=a->option_item==0?2:5,position=*value,i;
+            if(a->option_item==1)for(i=0;i<6;++i)if(order[i]==*value) {position=i;break;}
+            if(actions&BLAZE_LEFT) {if(a->option_item<3)position=clamp(position-1,0,maximum);sound(a,BLAZE_HIT);}
+            if(actions&BLAZE_RIGHT) {if(a->option_item<3)position=clamp(position+1,0,maximum);sound(a,BLAZE_HIT);}
+            if(a->option_item<3)*value=a->option_item==1?order[position]:position;
         }
         if(actions&BLAZE_CONFIRM) {
             blaze_music_stop(a);sound(a,BLAZE_PUU);

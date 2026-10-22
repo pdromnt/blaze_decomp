@@ -208,6 +208,16 @@ int main(int argc,char **argv) {
         {BlazeMusicStatus status;blaze_sdl_music_status(audio.music,&status);CHECK(status.playing && !status.failed);}
         press(p,app,SDL_SCANCODE_ESCAPE);CHECK(!app->pause_flags);blaze_sdl_audio_close(&audio);
     }
+    {
+        int width,height;
+        CHECK(display(p,5) && SDL_GetWindowSize(p->window,&width,&height));
+        CHECK(width==960 && height==720 && !(SDL_GetWindowFlags(p->window)&SDL_WINDOW_FULLSCREEN));
+        CHECK(render_frame(p,frame));readback=SDL_RenderReadPixels(p->renderer,NULL);
+        CHECK(readback && readback->w==960 && readback->h==720);
+        CHECK(rgb(readback,10,10,0xcc,0x66,0x33) && rgb(readback,950,710,0x11,0x22,0x44));
+        SDL_DestroySurface(readback);readback=NULL;
+        CHECK(display(p,1) && SDL_GetWindowSize(p->window,&width,&height) && width==640 && height==480);
+    }
     puts("SDL rendering/input and F10 capture/cancel/defaults/save/failure/focus/pause/close lifecycle passed");result=0;
 done:
     blaze_sdl_audio_close(&audio);
