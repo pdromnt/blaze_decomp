@@ -102,7 +102,10 @@ if(BLAZE_BUILD_APPLICATION)
         set_target_properties(blaze-native PROPERTIES RUNTIME_OUTPUT_DIRECTORY_${config} "${CMAKE_BINARY_DIR}/bin")
     endforeach()
     if(APPLE)
+        target_sources(blaze-native PRIVATE resources/blaze.icns)
+        set_source_files_properties(resources/blaze.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
         set_target_properties(blaze-native PROPERTIES MACOSX_BUNDLE TRUE OUTPUT_NAME Blaze
+            MACOSX_BUNDLE_ICON_FILE blaze.icns
             MACOSX_BUNDLE_GUI_IDENTIFIER org.blaze-decomp.blaze
             MACOSX_BUNDLE_BUNDLE_NAME Blaze
             MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
@@ -136,7 +139,9 @@ if(BLAZE_BUILD_APPLICATION)
     install(DIRECTORY "${BLAZE_ASSET_DIRECTORY}/dat/" DESTINATION "${BLAZE_INSTALL_ASSETS}/dat" COMPONENT Runtime FILES_MATCHING PATTERN "*.dat")
     # Package pristine defaults, never the player's writable root INIs.
     install(FILES resources/defaults/Blz.ini resources/defaults/BlzScr.ini DESTINATION "${BLAZE_INSTALL_ASSETS}/dat" COMPONENT Runtime)
-    install(FILES "${BLAZE_ROOT}/README.md" "${BLAZE_ROOT}/THIRD_PARTY_NOTICES.md" DESTINATION "${BLAZE_INSTALL_ASSETS}" COMPONENT Runtime)
+    install(FILES "${BLAZE_ROOT}/README.md" "${BLAZE_ROOT}/THIRD_PARTY_NOTICES.md"
+        "${BLAZE_ROOT}/docs/TESTING.md" "${BLAZE_ROOT}/docs/DISTRIBUTION.md"
+        DESTINATION "${BLAZE_INSTALL_ASSETS}" COMPONENT Runtime)
     if(BLAZE_PLATFORM STREQUAL "SDL3")
         install(FILES third_party/SDL3-LICENSE.txt DESTINATION "${BLAZE_INSTALL_ASSETS}" COMPONENT Runtime)
     endif()

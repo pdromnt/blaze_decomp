@@ -87,14 +87,14 @@ Do not add a second writable game state or redesign the renderer.
    `$ORIGIN`; macOS puts assets in Resources and its dylib in Frameworks with
    `@rpath`. Build trees hard-link immutable assets and seed independent INIs;
    ordinary builds run without `--assets`. Windows x86/x64 are locally verified;
-   the Unix/ARM candidates have not run and are not promoted release runtimes.
+   the Unix/ARM applications await their first remote build/run.
    Run existing fixtures on all targets,
    then owned bounded platform sessions and manual visible/audio/controller tests.
    Audit integer overflow/shifts/conversions/alignment and pointer assumptions
    under GCC/Clang/MSVC; add focused coverage only for discovered issues. Windows
    ZIPs keep `blaze.exe`; Linux tar.gz keeps `blaze`; macOS packages `Blaze.app`
    with immutable assets in Resources, icon/Info.plist and user data outside it.
-   Add ad-hoc signing/DMG validation; this is not notarization. Enable runtime
+   Ad-hoc signing, ICNS and mounted-DMG launch validation are wired; this is not notarization. Use runtime
    artifacts and manual tagged releases only after all real application jobs pass.
 
 ## Evidence required

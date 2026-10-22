@@ -14,9 +14,6 @@ on:
       package_version:
         type: string
         required: true
-      require_runtime:
-        type: boolean
-        default: false
 permissions:
   contents: read
 concurrency:
@@ -24,8 +21,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' && github.event_name != 'workflow_call' }}
 jobs:
   build:
-    name: ${{ matrix.platform }} (${{ matrix.scope }})
+    name: SDL3 ${{ matrix.platform }}
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
@@ -33,138 +31,26 @@ jobs:
           - platform: windows-x86
             runner: windows-2022
             architecture: x86
-            scope: application
+            video: windows
           - platform: windows-x64
             runner: windows-2022
             architecture: x64
-            scope: application
+            video: windows
           - platform: windows-arm64
             runner: windows-11-arm
             architecture: ARM64
-            scope: application
+            video: windows
           - platform: linux-x64
             runner: ubuntu-24.04
-            scope: core checks
+            video: dummy
           - platform: linux-arm64
             runner: ubuntu-24.04-arm
-            scope: core checks
+            video: dummy
           - platform: macos-arm64
             runner: macos-15
-            scope: core checks
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.source_ref || github.sha }}
-      - name: Build Windows application and run native checks
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: ./source/scripts/build.ps1 -Architecture '${{ matrix.architecture }}' -Configuration Release -Tests -NoDeploy
-      - name: Configure Unix core (release requires the real application)
-        if: runner.os != 'Windows'
-        run: cmake -S source -B source/build/native -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DBLAZE_BUILD_APPLICATION=${{ inputs.require_runtime && 'ON' || 'OFF' }}
-      - name: Build and check Unix core
-        if: runner.os != 'Windows'
-        run: |
-          cmake --build source/build/native --parallel 2
-          ctest --test-dir source/build/native --output-on-failure
-      - name: Stage Windows runtime
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $build='source/build/windows-${{ matrix.architecture }}'.ToLowerInvariant()
-          cmake --install $build --config Release --prefix source/build/stage --component Runtime
-          if($LASTEXITCODE){throw 'Runtime installation failed.'}
-      - name: Check staged application finds its own assets
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $exe=(Resolve-Path source/build/stage/blaze.exe).Path
-          $process=Start-Process $exe -ArgumentList '--hidden','--mute','--frames','50','--seed','1','--settings','none' -WorkingDirectory $env:RUNNER_TEMP -WindowStyle Hidden -PassThru
-          try {
-            if(!$process.WaitForExit(15000)) {throw 'Staged application timed out.'}
-            if($process.ExitCode -ne 0) {throw "Staged application exited $($process.ExitCode)."}
-          } finally {
-            if(!$process.HasExited){$process.Kill()}
-            $process.Dispose()
-          }
-      - name: Package Windows runtime and verify architecture
-        if: runner.os == 'Windows'
-        shell: pwsh
-        env:
-          PACKAGE_VERSION: ${{ inputs.package_version || 'snapshot' }}
-        run: ./source/scripts/package-release.ps1 -Version $env:PACKAGE_VERSION -Platform '${{ matrix.platform }}' -StageDirectory source/build/stage
-      - uses: actions/upload-artifact@v7
-        if: runner.os == 'Windows'
-        with:
-          name: runtime-${{ matrix.platform }}
-          path: source/dist/*
-          if-no-files-found: error
-          retention-days: 7
-  sdl-candidate:
-    name: SDL3 Windows ${{ matrix.architecture }} candidate
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - architecture: x86
-            runner: windows-2022
-          - architecture: x64
-            runner: windows-2022
-          - architecture: ARM64
-            runner: windows-11-arm
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.source_ref || github.sha }}
-      - name: Build SDL application and check shared settings, rendering and input
-        shell: pwsh
-        run: ./source/scripts/build.ps1 -Architecture '${{ matrix.architecture }}' -Backend SDL3 -Configuration Release -Tests -NoDeploy
-      - name: Stage SDL candidate
-        shell: pwsh
-        run: |
-          $build='source/build/windows-${{ matrix.architecture }}-sdl3'.ToLowerInvariant()
-          cmake --install $build --config Release --prefix source/build/sdl-stage --component Runtime
-          if($LASTEXITCODE){throw 'SDL runtime installation failed.'}
-      - name: Run bounded menu/combat/pause/abort route
-        shell: pwsh
-        run: |
-          $exe=(Resolve-Path source/build/sdl-stage/blaze.exe).Path
-          $input=(Resolve-Path source/tests/fixtures/menu-combat.input).Path
-          $process=Start-Process $exe -ArgumentList '--hidden','--mute','--frames','901','--seed','1','--settings','none','--input-script',$input -WorkingDirectory $env:RUNNER_TEMP -WindowStyle Hidden -PassThru
-          try {
-            if(!$process.WaitForExit(55000)) {throw 'SDL gameplay check timed out.'}
-            if($process.ExitCode -ne 0) {throw "SDL gameplay check exited $($process.ExitCode)."}
-          } finally {
-            if(!$process.HasExited){$process.Kill()}
-            $process.Dispose()
-          }
-      - name: Package separate candidate (not a release runtime)
-        shell: pwsh
-        run: |
-          $platform='windows-${{ matrix.architecture }}'.ToLowerInvariant()
-          ./source/scripts/package-release.ps1 -Version sdl3-candidate -Platform $platform -StageDirectory source/build/sdl-stage
-      - uses: actions/upload-artifact@v7
-        with:
-          name: sdl3-candidate-windows-${{ matrix.architecture }}
-          path: source/dist/*
-          if-no-files-found: error
-          retention-days: 7
-  sdl-unix-candidate:
-    name: SDL3 ${{ matrix.platform }} application candidate
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: linux-x64
-            runner: ubuntu-24.04
-          - platform: linux-arm64
-            runner: ubuntu-24.04-arm
-          - platform: macos-arm64
-            runner: macos-15
+            video: dummy
     env:
-      SDL_VIDEODRIVER: dummy
+      SDL_VIDEODRIVER: ${{ matrix.video }}
       SDL_AUDIODRIVER: dummy
       SDL_RENDER_DRIVER: software
     steps:
@@ -176,45 +62,79 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y ninja-build pkg-config libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev libwayland-dev libxkbcommon-dev libasound2-dev libpulse-dev libudev-dev libdrm-dev libgbm-dev libegl1-mesa-dev libgl1-mesa-dev
-      - name: Build the real SDL application and checks
+      - name: Build and check Windows SDL application
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./source/scripts/build.ps1 -Architecture '${{ matrix.architecture }}' -Backend SDL3 -Configuration Release -Tests -NoDeploy
+      - name: Build and check Unix SDL application
+        if: runner.os != 'Windows'
         run: |
           cmake -S source -B source/build/sdl-native -DCMAKE_BUILD_TYPE=Release -DBLAZE_PLATFORM=SDL3 -DBLAZE_BUILD_APPLICATION=ON -DBUILD_TESTING=ON
           cmake --build source/build/sdl-native --parallel 3
           ctest --test-dir source/build/sdl-native --output-on-failure
-      - name: Stage the relocatable runtime
-        run: cmake --install source/build/sdl-native --prefix source/build/sdl-stage --component Runtime
-      - name: Check staged library lookup
+      - name: Stage runtime
+        shell: pwsh
+        run: |
+          $build=if($IsWindows){'source/build/windows-${{ matrix.architecture }}-sdl3'.ToLowerInvariant()}else{'source/build/sdl-native'}
+          cmake --install $build --config Release --prefix source/build/stage --component Runtime
+          if($LASTEXITCODE){throw 'Runtime installation failed.'}
+      - name: Check Unix shared library lookup
+        if: runner.os != 'Windows'
         run: |
           if [ "$RUNNER_OS" = Linux ]; then
-            readelf -d source/build/sdl-stage/blaze | grep -F '$ORIGIN'
-            ldd source/build/sdl-stage/blaze | grep 'libfluidsynth.so.3 => .*/sdl-stage/.*libfluidsynth'
+            readelf -d source/build/stage/blaze | grep -F '$ORIGIN'
+            ldd source/build/stage/blaze | grep 'libfluidsynth.so.3 => .*/stage/.*libfluidsynth'
           else
-            otool -L source/build/sdl-stage/Blaze.app/Contents/MacOS/Blaze | grep -F '@rpath/libfluidsynth.3.dylib'
-            otool -l source/build/sdl-stage/Blaze.app/Contents/MacOS/Blaze | grep -F '@executable_path/../Frameworks'
+            otool -L source/build/stage/Blaze.app/Contents/MacOS/Blaze | grep -F '@rpath/libfluidsynth.3.dylib'
+            otool -l source/build/stage/Blaze.app/Contents/MacOS/Blaze | grep -F '@executable_path/../Frameworks'
           fi
-      - name: Run bounded application/menu/combat/pause/abort route
+      - name: Run menu, combat, pause and repeated abort route
         timeout-minutes: 2
         shell: pwsh
         run: |
-          $binary=if($IsMacOS){'Blaze.app/Contents/MacOS/Blaze'}else{'blaze'}
-          $exe=(Resolve-Path "source/build/sdl-stage/$binary").Path
+          $binary=if($IsWindows){'blaze.exe'}elseif($IsMacOS){'Blaze.app/Contents/MacOS/Blaze'}else{'blaze'}
+          $exe=(Resolve-Path "source/build/stage/$binary").Path
           $input=(Resolve-Path source/tests/fixtures/menu-combat.input).Path
           $dump=Join-Path $env:RUNNER_TEMP 'blaze-final.ppm'
-          $process=Start-Process $exe -ArgumentList '--hidden','--audio','--frames','901','--seed','1','--settings','none','--input-script',$input,'--dump-frame',$dump -WorkingDirectory $env:RUNNER_TEMP -PassThru
+          $start=@{FilePath=$exe;ArgumentList=@('--hidden','--audio','--frames','901','--seed','1','--settings','none','--input-script',$input,'--dump-frame',$dump);WorkingDirectory=$env:RUNNER_TEMP;PassThru=$true}
+          if($IsWindows){$start.WindowStyle='Hidden'}
+          $process=Start-Process @start
           try {
-            if(!$process.WaitForExit(55000)){throw 'SDL gameplay route timed out.'}
-            if($process.ExitCode -ne 0){throw "SDL gameplay route exited $($process.ExitCode)."}
+            if(!$process.WaitForExit(55000)){throw 'Gameplay route timed out.'}
+            if($process.ExitCode -ne 0){throw "Gameplay route exited $($process.ExitCode)."}
           } finally {
-            if(!$process.HasExited){$process.Kill()}
+            if(!$process.HasExited){$process.Kill();$process.WaitForExit()}
             $process.Dispose()
           }
           if((Get-FileHash $dump).Hash -ne 'B83704A703B65E2A39367262C04DD306BBB7068C9480E65FF028039EBB9ACB3C'){throw 'Gameplay frame differs from the Windows reference.'}
-      - name: Package separate candidate
+      - name: Package runtime and verify architecture
         shell: pwsh
-        run: ./source/scripts/package-release.ps1 -Version sdl3-candidate -Platform '${{ matrix.platform }}' -StageDirectory source/build/sdl-stage
+        env:
+          PACKAGE_VERSION: ${{ inputs.package_version || 'snapshot' }}
+        run: ./source/scripts/package-release.ps1 -Version $env:PACKAGE_VERSION -Platform '${{ matrix.platform }}' -StageDirectory source/build/stage
+      - name: Launch extracted archive or mounted DMG
+        shell: pwsh
+        run: ./source/scripts/check-package.ps1 -Platform '${{ matrix.platform }}'
       - uses: actions/upload-artifact@v7
         with:
-          name: sdl3-candidate-${{ matrix.platform }}
+          name: runtime-${{ matrix.platform }}
           path: source/dist/*
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 14
+      - name: Record build provenance
+        shell: pwsh
+        run: |
+          "### ${{ matrix.platform }}" >> $env:GITHUB_STEP_SUMMARY
+          "Commit: $(git rev-parse HEAD)" >> $env:GITHUB_STEP_SUMMARY
+          "Release build, native checks, deterministic gameplay frame and packaged launch passed. Hardware acceptance remains manual; see TESTING.md." >> $env:GITHUB_STEP_SUMMARY
+  comparison:
+    name: Win32 comparison
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.source_ref || github.sha }}
+      - name: Preserve Win32 application and checks
+        shell: pwsh
+        run: ./source/scripts/build.ps1 -Architecture x64 -Configuration Release -Tests -NoDeploy

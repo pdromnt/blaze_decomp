@@ -40,3 +40,5 @@ This bank changes timbre relative to the host's Windows MIDI synth.
 No project-wide license has been selected for the reconstructed source. Before
 public distribution, separately establish code, original asset, music and
 dependency permissions. This file does not grant those permissions.
+
+The macOS blaze.icns is a format conversion and nearest-neighbor scaling of the original blaze.ico artwork; original ownership still applies.

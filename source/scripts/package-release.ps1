@@ -18,7 +18,7 @@ if($Platform -eq 'macos-arm64'){
     $assets=Join-Path $stage 'Blaze.app/Contents/Resources'
     $exe=Join-Path $stage 'Blaze.app/Contents/MacOS/Blaze'
 }
-foreach($name in @('dar','dat','midi','se','resources/rop.bin','resources/trig.bin','dat/Blz.ini','dat/BlzScr.ini','README.md','THIRD_PARTY_NOTICES.md')){
+foreach($name in @('dar','dat','midi','se','resources/rop.bin','resources/trig.bin','dat/Blz.ini','dat/BlzScr.ini','README.md','THIRD_PARTY_NOTICES.md','TESTING.md','DISTRIBUTION.md')){
     if(!(Test-Path -LiteralPath (Join-Path $assets $name))){throw "Missing runtime content: $name"}
 }
 foreach($name in @('source','game-recomp','.git','dat/BlzCtrl.ini')){
@@ -49,6 +49,10 @@ if($Platform.StartsWith('windows-')){
     $expected=@{'linux-x64'='ELF 64-bit.*x86-64';'linux-arm64'='ELF 64-bit.*(ARM aarch64|ARM64)';'macos-arm64'='Mach-O 64-bit.*arm64'}[$Platform]
     if($description -notmatch $expected){throw "Wrong executable architecture: $description"}
     if($Platform -eq 'macos-arm64'){
+        $icon=Join-Path $assets 'blaze.icns'
+        if(!(Test-Path -LiteralPath $icon) -or (Get-FileHash $icon).Hash -ne 'FC4CF04A4C20074BB15255627A636A9DE05BCE4763D5EB77E28A13824FF68CCB'){throw 'Canonical Mac icon missing or changed.'}
+        $bundleIcon=(& /usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' (Join-Path $stage 'Blaze.app/Contents/Info.plist')) -join ''
+        if($LASTEXITCODE -or $bundleIcon -ne 'blaze.icns'){throw 'Bundle icon metadata is incorrect.'}
         & codesign --force --deep --sign - (Join-Path $stage 'Blaze.app')
         if($LASTEXITCODE){throw 'Ad-hoc signing failed.'}
         & codesign --verify --deep --strict (Join-Path $stage 'Blaze.app')
@@ -61,4 +65,7 @@ if($Platform.StartsWith('windows-')){& tar -a -cf "$base.zip" -C $stage .}
 elseif($Platform -eq 'macos-arm64'){& hdiutil create -ov -volname 'Blaze' -srcfolder $stage -format UDZO "$base.dmg"}
 else{& tar -czf "$base.tar.gz" -C $stage .}
 if($LASTEXITCODE){throw 'Packaging failed.'}
+$archive=if($Platform.StartsWith('windows-')){"$base.zip"}elseif($Platform -eq 'macos-arm64'){"$base.dmg"}else{"$base.tar.gz"}
+$digest=(Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash.ToLowerInvariant()
+"$digest  $([IO.Path]::GetFileName($archive))" | Set-Content -LiteralPath "$archive.sha256" -Encoding ascii
 Write-Host "Packaged $base"

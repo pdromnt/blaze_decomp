@@ -11,7 +11,7 @@ Extracted without executing the original BLAZE 2.00 PE, SHA-256
 
 The embedded icon image itself hashes to
 `8217ead39da5d7df0ce08b8931740325401d665dc9d3087933895cd176d9662c`.
-Configuration verifies the three files; normal builds copy them, without Python
+Configuration verifies the four files; normal builds copy them, without Python
 or an EXE. Optional reproduction using a separately supplied canonical input:
 
 ```sh
@@ -21,3 +21,9 @@ python source/scripts/extract_resources.py /path/to/original/blaze.exe /tmp/blaz
 `defaults/Blz.ini` and `defaults/BlzScr.ini` are pristine startup/package defaults.
 Player INIs under root `dat/` are ignored and never overwritten on rebuild.
 Original ownership applies to these resources; see root THIRD_PARTY_NOTICES.md.
+
+`blaze.icns` retains the original icon artwork and opaque background, nearest-neighbor
+scaled into standard and Retina representations (16 through 1024 pixels).
+SHA-256: `fc4cf04a4c20074bb15255627a636a9de05bce4763d5eb77e28a13824ff68ccb`.
+Optional regeneration requires Pillow: `python source/scripts/make_mac_icon.py`.
+Normal Mac builds consume the checked-in ICNS and need no Python.

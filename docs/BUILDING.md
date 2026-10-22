@@ -66,16 +66,19 @@ full Unicode case folding is not claimed.
 
 ## CI and releases
 
-Baseline jobs retain Windows comparison applications and Unix core checks.
-Separate SDL candidates now cover Windows x86/x64/ARM64, Linux x64/ARM64 and
-macOS ARM64 on native runners. They build/check/stage the real application, run
-bounded gameplay, and package separate candidate artifacts. Unix runs use silent
-dummy devices and enforce the known final framebuffer hash. Hardware-only checks
-skip explicitly without devices. None of these updated workflows has run remotely.
+Six native SDL application jobs build Windows x86/x64/ARM64, Linux x64/ARM64 and
+macOS ARM64. Each runs native checks, the bounded 901-frame menu/combat/pause/abort
+route and its reference framebuffer comparison. Packages are architecture-checked,
+checksummed, then launched from their extracted archive or mounted DMG before upload.
+CI uses silent dummy audio; Unix uses dummy video. This does not test real devices.
+A separate Windows x64 job preserves the Win32 comparison build.
 
-The manually dispatched release resolves an existing tag to its commit and
-requires all six runtime packages. Candidate validation and promotion into the
-primary release jobs are still pending; candidates cannot satisfy that gate.
-No local helper pushes, creates tags or publishes. macOS signing is ad hoc,
-not notarization. Code/asset/dependency redistribution review remains separate.
-See PORTABILITY.md for remaining native execution and manual acceptance gaps.
+Download `runtime-<platform>` from the Actions run. It contains the ZIP, tar.gz or
+DMG plus its SHA-256 sidecar. See [testing](TESTING.md) for installation and manual
+acceptance. macOS includes the original icon at standard/Retina sizes and ad-hoc
+signing; it is not notarized. Native Unix/ARM results remain pending the first run.
+
+The manually dispatched release workflow resolves an existing tag to its commit,
+requires all six packages and verifies their checksums before publishing. Ordinary
+CI never publishes a release. No local helper pushes, creates tags or publishes.
+Code/asset redistribution review remains separate; see [distribution](DISTRIBUTION.md).

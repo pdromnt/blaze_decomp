@@ -77,13 +77,13 @@ for ordinary builds. For a self-contained runtime package, see
 The ignored `game-recomp/` retains the private Git history, original inputs,
 extraction and executable differential tools. It is not a public build dependency.
 
-CI separates the comparison builds/core checks from six real SDL application
-candidates. Candidate ZIP/tar.gz/macOS app/DMG packaging is configured but Unix/ARM
-execution remains unverified. The manually dispatched release
-workflow resolves an existing tag to its commit and requires all six runtime
-packages before publishing; candidates are not yet promoted to release runtimes. See
-[CI/release details](docs/BUILDING.md#ci-and-releases).
-
+CI builds six SDL application runtimes and preserves a Windows comparison job.
+Download `runtime-<platform>` artifacts from Actions for ZIP/tar.gz/DMG packages
+and SHA-256 checksums. Packaged launches and deterministic gameplay checks precede
+upload; native Unix/ARM results remain pending the first run. See
+[testing instructions](docs/TESTING.md) and [distribution notes](docs/DISTRIBUTION.md).
+The manually dispatched release workflow requires all six packages from an existing
+tag. Ordinary CI does not publish releases.
 This is still under testing. Fixtures reach later bosses through controlled state;
 they do not establish natural campaign victory, full scene parity or platform
 hardware acceptance. No mid-mission/campaign resume is implemented.

@@ -16,6 +16,7 @@ CMakeLists.txt text eol=lf
 *.wav -text
 *.bin -text
 *.ico -text
+*.icns -text
 *.gif -text
 # Preserve original documentation bytes/encoding instead of normalizing them.
 /html/** binary
