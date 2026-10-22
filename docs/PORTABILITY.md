@@ -2,8 +2,9 @@
 
 Targets: Windows x86/x64/ARM64, Linux x64/ARM64, macOS ARM64. Windows x86/x64
 currently run the application; ARM64 Windows is configured but not locally built.
-Unix CI checks the ordinary-C core and shared settings. The optional SDL3 Windows
-candidate now runs the real application with SDL presentation/input/timing; it
+Baseline Unix jobs check the ordinary-C core and shared settings; separate SDL
+jobs now configure real Linux/macOS applications, pending their first CI run.
+The optional SDL3 Windows candidate runs the real application with presentation/input/timing; it
 uses SDL PCM/FluidSynth MIDI and an in-window SDL controls editor. Default remains
 Win32. No Unix runtime or ARM execution is claimed at this checkpoint.
 
@@ -21,13 +22,19 @@ Do not add a second writable game state or redesign the renderer.
    both backends: strict numeric loading, exclusive temporary creation, flush and
    atomic replacement, unknown byte preservation, score/mode pairing and three-file
    ownership. All owned duplicate keys update together; collision failure must not
-   remove another owner's temp file. Remaining work: fully separate asset root
-   from writable root; retain executable-adjacent `dat/` on Windows and portable
-   Linux packages. Installed Linux/macOS use a writable user directory with the
+   remove another owner's temp file. Asset and writable roots are now separated;
+   retain executable-adjacent `dat/` on Windows and `--portable` Linux runs.
+   Installed Linux/macOS use SDL's writable user directory with the
    same `dat/Blz.ini`, `BlzScr.ini`, `BlzCtrl.ini` names. No writes into app bundles.
    Do not silently switch Windows to AppData. Preserve existing Windows key/button
    bindings through an explicit mapping; SDL scancodes are not Win32 VK values.
-   Handle asset filename casing and legacy INI backslash paths explicitly on Unix.
+   Core file access uses UTF-8/wide Windows APIs. Asset reads normalize legacy
+   relative backslashes, try exact names first, then resolve unique ASCII case
+   matches per Unix path component. Ambiguous matches fail; writes remain exact.
+   Startup receives its selected configuration directory explicitly, so user INIs
+   retain music/weapon/timing metadata as well as mutable options and scores.
+   Missing INIs are seeded once without overwriting edits. These paths pass
+   Windows Unicode tests; Unix case behavior awaits native CI execution.
 2. **SDL application, window/input/pacing.** SDL 3.4.18 is pinned/checksummed and
    statically linked in the Windows candidate. Its window/renderer/streaming RGBA
    texture, palette expansion, nearest-neighbor scaling, action masks and monotonic
@@ -75,7 +82,13 @@ Do not add a second writable game state or redesign the renderer.
    [FluidSynth](https://github.com/FluidSynth/fluidsynth),
    [FluidLite](https://github.com/divideconcept/FluidLite),
    [bank author's license](https://github.com/mrbumpy409/GeneralUser-GS/blob/main/documentation/LICENSE.txt).
-4. **Six native applications and packages.** Run existing fixtures on all targets,
+4. **Six native applications and packages.** Actual SDL targets and candidate jobs
+   are wired for all six architectures. Linux uses adjacent libraries with
+   `$ORIGIN`; macOS puts assets in Resources and its dylib in Frameworks with
+   `@rpath`. Build trees hard-link immutable assets and seed independent INIs;
+   ordinary builds run without `--assets`. Windows x86/x64 are locally verified;
+   the Unix/ARM candidates have not run and are not promoted release runtimes.
+   Run existing fixtures on all targets,
    then owned bounded platform sessions and manual visible/audio/controller tests.
    Audit integer overflow/shifts/conversions/alignment and pointer assumptions
    under GCC/Clang/MSVC; add focused coverage only for discovered issues. Windows

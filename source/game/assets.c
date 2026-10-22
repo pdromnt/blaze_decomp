@@ -1,4 +1,5 @@
 #include "blaze.h"
+#include "blaze_files.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,10 +11,12 @@ uint32_t blaze_le32(const uint8_t *p) {
 static int signed16(uint16_t x) { return x <= INT16_MAX ? (int)x : (int)x - 65536; }
 int blaze_path(char *out, size_t capacity, const char *root, const char *relative) {
     int n = snprintf(out, capacity, "%s/%s", root, relative);
-    return n >= 0 && (size_t)n < capacity;
+    size_t i;if(n<0 || (size_t)n>=capacity)return 0;
+    for(i=strlen(root)+1;out[i];++i)if(out[i]=='\\')out[i]='/';
+    return 1;
 }
 int blaze_file_read(const char *path, uint8_t **bytes, size_t *size) {
-    FILE *file = fopen(path, "rb");
+    FILE *file = blaze_asset_open(path);
     uint8_t *data;
     long length;
     *bytes = NULL; *size = 0;

@@ -1,4 +1,5 @@
 #include "blaze.h"
+#include "blaze_files.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,9 +22,9 @@ static int key_index(const char *key, const char *prefix) {
 /* Read-only startup configuration; writes must later target the user save dir.
    This bounded reader covers the shipped section/key syntax. */
 static void config(BlazeApp *a, const char *name, int score) {
-    char path[1200], line[256], section[80]="";
+    char line[256], section[80]="";
     FILE *f;
-    if (!blaze_path(path,sizeof(path),a->root,name) || !(f=fopen(path,"r"))) return;
+    if (!(f=blaze_asset_open(name))) return;
     while (fgets(line,sizeof(line),f)) {
         char key[80],value[128]; int index;
         if (sscanf(line,"[%79[^]]]",section)==1) continue;
@@ -132,7 +133,7 @@ int blaze_progress_save(BlazeApp *a) {
     }
     return 1;
 }
-int blaze_app_open(BlazeApp *a, const char *root, const char *rop_path) {
+int blaze_app_open(BlazeApp *a, const char *root, const char *rop_path,const char *config_directory) {
     char path[1200]; size_t size,i; uint8_t *bytes;
     const char *slash=strrchr(rop_path,'/'),*backslash=strrchr(rop_path,'\\');
     memset(a,0,sizeof(*a));
@@ -160,7 +161,13 @@ int blaze_app_open(BlazeApp *a, const char *root, const char *rop_path) {
     for(i=0;i<BLAZE_MUSIC_GROUPS*3;++i) {BlazeMusicTrack *t=&a->tracks[i/3][i%3];strcpy(t->file,"0");strcpy(t->name,"0");t->cd=1;}
     a->max_stage=5;a->frame_ms=25; /* Original missing-key default, in milliseconds. */
     a->loadout.weapons[0].enabled=a->loadout.weapons[1].enabled=a->loadout.weapons[2].enabled=1;
-    config(a,"dat/Blz.ini",0); config(a,"dat/BlzScr.ini",1);
+    {char directory[1200];
+    if(!config_directory) {
+        if(!blaze_path(directory,sizeof(directory),root,"dat"))return 0;config_directory=directory;
+    }
+    if(!blaze_path(path,sizeof(path),config_directory,"Blz.ini"))return 0;config(a,path,0);
+    if(!blaze_path(path,sizeof(path),config_directory,"BlzScr.ini"))return 0;config(a,path,1);}
+
     return screen(a,BLAZE_INTRO,"dar/BLZ_TEA.DAR",0);
 }
 void blaze_app_close(BlazeApp *a) {

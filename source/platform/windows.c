@@ -1,6 +1,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include "blaze.h"
+#include "blaze_files.h"
 #include "windows_audio.h"
 #include "windows_resources.h"
 #include <stdio.h>
@@ -38,7 +39,7 @@ typedef struct {
     BlazeSettings storage;
 } WindowSettings;
 static int settings_location(WindowSettings *s,const char *directory,const char *requested,int hidden) {
-    char folder[1200],absolute[1200];DWORD length;blaze_settings_paths(&s->storage,NULL);
+    char folder[1200],absolute[1200];wchar_t wide_folder[1200],wide_absolute[1200];DWORD length;blaze_settings_paths(&s->storage,NULL);
     if(requested) {
         if(!strcmp(requested,"none"))return 1;
         if(strlen(requested)>=sizeof(folder))return 0;strcpy(folder,requested);
@@ -47,8 +48,9 @@ static int settings_location(WindowSettings *s,const char *directory,const char 
         if(!blaze_path(folder,sizeof(folder),directory,"dat"))return 0;
     }
     /* Resolve the requested directory once before handing paths to shared C. */
-    length=GetFullPathNameA(folder,sizeof(absolute),absolute,NULL);
-    if(!length || length>=sizeof(absolute))return 0;
+    if(!MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,folder,-1,wide_folder,1200))return 0;
+    length=GetFullPathNameW(wide_folder,1200,wide_absolute,NULL);
+    if(!length || length>=1200 || !WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,wide_absolute,-1,absolute,sizeof(absolute),NULL,NULL))return 0;
     return blaze_settings_paths(&s->storage,absolute);
 }
 /* Native full-screen modes are borderless, never change desktop resolution.
@@ -141,7 +143,7 @@ static HWND create_game_window(HINSTANCE instance,BlazeFrame *frame) {
     return window;
 }
 static int frame_dump(const char *path,const BlazeFrame *frame) {
-    FILE *f=fopen(path,"wb"); int y,x;
+    FILE *f=blaze_fopen(path,"wb"); int y,x;
     if (!f) return 0;
     fprintf(f,"P6\n320 240\n255\n");
     for (y=0;y<BLAZE_HEIGHT;++y) for (x=0;x<BLAZE_WIDTH;++x) {
@@ -150,7 +152,7 @@ static int frame_dump(const char *path,const BlazeFrame *frame) {
     }
     return fclose(f)==0;
 }
-int main(int argc,char **argv) {
+static int windows_run(int argc,char **argv) {
     char root[1024],rop[1200],executable[1024];
     BlazeApp *app=calloc(1,sizeof(*app));
     BlazeWindowsAudio *audio=NULL;int mute=0,explicit_audio=0;
@@ -165,8 +167,8 @@ int main(int argc,char **argv) {
     WindowSettings settings={0};BlazePad pad={-1,0};
     uint8_t *script=NULL;size_t script_size=0;
     if (!app) return 1;
-    path_length=GetModuleFileNameA(NULL,executable,sizeof(executable));
-    if (!path_length || path_length>=sizeof(executable)) { free(app); return 1; }
+    {wchar_t module[4096];path_length=GetModuleFileNameW(NULL,module,4096);
+    if(!path_length || path_length>=4096 || !WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,module,-1,executable,sizeof(executable),NULL,NULL)) {free(app);return 1;}}
     if (!strrchr(executable,'\\')) { free(app); return 1; }
     *strrchr(executable,'\\')='\0'; strcpy(root,executable);
     for (i=1;i<argc;++i) {
@@ -192,7 +194,7 @@ int main(int argc,char **argv) {
         fprintf(stderr,"Input script requires bounded frames and LE32 action masks\n");free(script);free(app);return 1;
     }
     blaze_path(rop,sizeof(rop),executable,"resources/rop.bin");
-    if (!blaze_app_open(app,root,rop)) { fprintf(stderr,"%s\n",app->error); exit_code=1; goto done; }
+    if (!blaze_app_open(app,root,rop,NULL)) { fprintf(stderr,"%s\n",app->error); exit_code=1; goto done; }
     if(!settings_location(&settings,executable,settings_path,hidden)) {
         fprintf(stderr,"Cannot prepare dat INI paths\n");exit_code=1;goto done;
     }
@@ -287,4 +289,16 @@ done:
     blaze_app_close(app);if(audio)blaze_windows_audio_close(audio);
     if(precise_wait)timeEndPeriod(1);
     free(audio); free(app);free(script); return exit_code;
+}
+int wmain(int argc,wchar_t **wide_arguments) {
+    char **arguments=calloc((size_t)argc+1,sizeof(*arguments));int i,result=1;
+    if(!arguments)return 1;
+    for(i=0;i<argc;++i) {
+        int size=WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,wide_arguments[i],-1,NULL,0,NULL,NULL);
+        if(!size || !(arguments[i]=malloc((size_t)size)) ||
+           !WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,wide_arguments[i],-1,arguments[i],size,NULL,NULL))goto done_arguments;
+    }
+    result=windows_run(argc,arguments);
+done_arguments:
+    for(i=0;i<argc;++i)free(arguments[i]);free(arguments);return result;
 }

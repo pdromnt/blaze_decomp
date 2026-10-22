@@ -677,8 +677,8 @@ Keyboard IDs remain the persisted VK format, translated explicitly to SDL keys;
 unmapped IDs fail visibly instead of being ignored. SDL does not capture the
 mouse or accept unfocused gameplay input. Windowed/letterboxed/centered display
 and monotonic `Time` deadlines retain the existing simulation cadence. MIDI and
-F10 now use SDL-compatible owners described below; case-aware assets and writable
-user paths still block Unix applications. The default Win32 target remains available.
+F10 now use SDL-compatible owners described below. Unix application targets are
+enabled; their native build/run validation remains open. Win32 remains available.
 
 Live Ghidra audit of the remaining legacy keys (2026-10-21):
 - `Clear`: 0x401e8c reads it once into application offset 0x98. No subsequent
@@ -776,3 +776,28 @@ Cancel leaves disk and live bindings untouched. Closing clears only pause reason
 existing keyboard/pad samples rather than manufacturing a neutral state by
 resetting/reopening them; applied device changes trigger fresh discovery.
 No SDL editor path calls the Win32 controls editor.
+
+## File and configuration ownership
+
+`blaze_fopen` and replace/remove helpers accept UTF-8 paths, using wide APIs on
+Windows and native POSIX calls elsewhere. Asset opens first try the exact path;
+on Unix ENOENT they walk path components for unique ASCII case matches. An exact
+match wins over folded matches; an ambiguous folded match reports failure.
+Original asset names are ASCII. Unicode path bytes remain unchanged; full Unicode
+case folding is not claimed. `blaze_path` normalizes legacy relative backslashes.
+Writes never perform case fallback, avoiding competing writable INI copies.
+
+`blaze_app_open` takes immutable assets, resource path and an optional complete
+configuration directory separately. NULL retains asset-root/dat for oracle and
+disabled-write fixtures. SDL chooses/seeds its writable directory before opening
+the application, then reads the same original configuration parser there. Thus
+music choices, weapon metadata and timing do not disappear from user INIs.
+The existing strict settings loader/writer still owns only mutable fields.
+Windows keeps executable-adjacent dat; Unix uses SDL's user-data path/dat, with
+an explicit portable Linux mode. macOS portable mode is rejected to keep writes
+out of bundles. Explicit directories and disabled writes remain supported.
+
+Default INIs are copied only into missing files using exclusive creation. They
+are independent of immutable asset hard-links. Build/package roots own resources,
+shared-library placement and asset discovery; no process-wide working-directory
+change or original-executable resource loading is introduced.

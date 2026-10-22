@@ -1,8 +1,8 @@
 /* Exercise the actual Win32 backend with a hidden owned window and memory DC.
    No game process, keyboard/mouse input, desktop capture or focus changes. */
-#define main blaze_windows_entry
+#define wmain blaze_windows_entry
 #include "../../platform/windows.c"
-#undef main
+#undef wmain
 
 #define CHECK(condition) do {if(!(condition)) {fprintf(stderr,"line %d: %s\n",__LINE__,#condition);goto done;}} while(0)
 int main(int argc,char **argv) {
@@ -11,7 +11,7 @@ int main(int argc,char **argv) {
     BITMAPINFO info={0};HWND foreground=GetForegroundWindow();unsigned y;int result=1;
     WindowSettings settings={0};BlazeApp *options=calloc(1,sizeof(*options)),*reopened=NULL;
     char temporary[MAX_PATH]="",folder[MAX_PATH],testdir[MAX_PATH]="";RECT bounds;DEVMODEA before={0},after={0};
-    CHECK(argc==3 && frame && options && blaze_app_open(options,argv[1],argv[2]));
+    CHECK(argc==3 && frame && options && blaze_app_open(options,argv[1],argv[2],NULL));
     {FrameClock clock={1000,40};
         CHECK(frame_wait(&clock,999)==1 && !frame_wait(&clock,1000));
         frame_advance(&clock,1007);CHECK(clock.next==1040 && frame_wait(&clock,1007)==33);
@@ -116,7 +116,7 @@ int main(int argc,char **argv) {
         options->world.enemies_created=1; /* Report-entry prerequisite. */
         options->loadout.weapons[3].enabled=0;options->world.player.words[0x94/4]=0;
         CHECK(blaze_app_tick(options,0) && options->state==BLAZE_LOADING);
-        CHECK(blaze_app_open(reopened,argv[1],argv[2]) && load_options(&next,reopened));
+        CHECK(blaze_app_open(reopened,argv[1],argv[2],NULL) && load_options(&next,reopened));
         CHECK(reopened->loadout.weapons[3].enabled && reopened->level==0 && reopened->music==2);
         CHECK(next.storage.controls.keys[4]=='A' && next.storage.controls.buttons[4]==32);
         blaze_app_close(reopened);
@@ -124,7 +124,7 @@ int main(int argc,char **argv) {
         options->state=BLAZE_ENDING;options->tick=18;options->loadout.mode=4;
         options->world.player.words[0x58/4]=7000;
         CHECK(blaze_app_tick(options,0) && options->ranking_scores[0]==7000);
-        CHECK(blaze_app_open(reopened,argv[1],argv[2]) && load_options(&next,reopened));
+        CHECK(blaze_app_open(reopened,argv[1],argv[2],NULL) && load_options(&next,reopened));
         CHECK(reopened->high_score==7000 && reopened->ranking_scores[1]==6000);
         {static const int expected[]={4,1,2,3,0};CHECK(!memcmp(reopened->ranking_modes,expected,sizeof(expected)));}
         blaze_app_close(reopened);
@@ -135,7 +135,7 @@ int main(int argc,char **argv) {
            full-screen choice even though startup's real window is windowed. */
         CHECK(save_options(&settings,1,4,2));options->display=1;
         CHECK(blaze_progress_save(options));
-        CHECK(blaze_app_open(reopened,argv[1],argv[2]) && load_options(&next,reopened));
+        CHECK(blaze_app_open(reopened,argv[1],argv[2],NULL) && load_options(&next,reopened));
         CHECK(reopened->ranking_scores[0]==7000 && reopened->loadout.weapons[8].enabled);
         CHECK(reopened->ranking_modes[0]==4 && reopened->ranking_modes[1]==1 && reopened->ranking_modes[4]==0);
         CHECK(reopened->level==1 && reopened->display==4 && reopened->music==2);
@@ -145,18 +145,18 @@ int main(int argc,char **argv) {
         options->loadout.weapons[9].enabled=1;
         options->ranking_scores[4]=3500;options->ranking_modes[4]=2;
         {int saved=blaze_progress_save(options);CloseHandle(lock);CHECK(!saved && strstr(options->error,"save user progress"));}
-        CHECK(blaze_app_open(reopened,argv[1],argv[2]) && load_options(&next,reopened));
+        CHECK(blaze_app_open(reopened,argv[1],argv[2],NULL) && load_options(&next,reopened));
         CHECK(!reopened->loadout.weapons[9].enabled && reopened->ranking_scores[0]==7000);
         CHECK(reopened->ranking_scores[4]==3000 && reopened->ranking_modes[4]==0);
         blaze_app_close(reopened);
         CHECK(blaze_progress_save(options));
-        CHECK(blaze_app_open(reopened,argv[1],argv[2]) && load_options(&next,reopened));
+        CHECK(blaze_app_open(reopened,argv[1],argv[2],NULL) && load_options(&next,reopened));
         CHECK(reopened->loadout.weapons[9].enabled);
         CHECK(reopened->ranking_scores[4]==3500 && reopened->ranking_modes[4]==2);
         blaze_app_close(reopened);
         {FILE *bad=fopen(settings.storage.score_path,"ab");CHECK(bad);
             CHECK(fputs("[Other]\nHiScore1=1\nClearMode1=0\n[Score]\nHiScore2=999999999999999999999\nWeaponFlag9=2\nHiScore1=1oops\nClearMode1=1oops\nClearMode2=999999999999999999999\n",bad)>=0);CHECK(!fclose(bad));}
-        CHECK(blaze_app_open(reopened,argv[1],argv[2]) && load_options(&next,reopened));
+        CHECK(blaze_app_open(reopened,argv[1],argv[2],NULL) && load_options(&next,reopened));
         CHECK(reopened->ranking_scores[0]==7000 && reopened->ranking_scores[1]==6000 && reopened->loadout.weapons[9].enabled);
         CHECK(reopened->ranking_modes[0]==4 && reopened->ranking_modes[1]==1);
         blaze_app_close(reopened);free(reopened);reopened=NULL;

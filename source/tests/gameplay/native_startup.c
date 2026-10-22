@@ -20,7 +20,7 @@ int main(int argc,char **argv) {
     BlazeApp *a=calloc(1,sizeof(*a)); BlazeArchive archive={0};
     char path[1200],name[80],error[256]; size_t i,j; int cycle;
     CHECK(argc==3 && a);
-    CHECK(blaze_app_open(a,argv[1],argv[2]));CHECK(a->frame_ms==40);
+    CHECK(blaze_app_open(a,argv[1],argv[2],NULL));CHECK(a->frame_ms==40);
     blaze_random_begin(&a->random,1); /* Reproducible gameplay fixture, not wall-clock RNG. */
     /* Every shipped DAR must parse, including short transparent rows and crops. */
     for (i=0;i<sizeof(archives)/sizeof(archives[0]);++i) {
@@ -751,7 +751,7 @@ int main(int argc,char **argv) {
     /* Fixed MIDI choice keeps this gameplay regression independent of music rolls.
        Full seed-1 prefix, without injected world state: movement changes the camera,
        tap fire fights the actual waves, and type 12 creates its own child. */
-    CHECK(blaze_app_open(a,argv[1],argv[2]));a->music=1;blaze_random_begin(&a->random,1);
+    CHECK(blaze_app_open(a,argv[1],argv[2],NULL));a->music=1;blaze_random_begin(&a->random,1);
     {
         unsigned seen_parent=0,seen_child=0,seen_boss=0,seen_warning=0;
         for(i=0;i<3340;++i) {

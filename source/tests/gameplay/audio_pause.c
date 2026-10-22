@@ -41,7 +41,7 @@ int main(int argc,char **argv) {
     CHECK(output[0]==bank.sounds[BLAZE_LIG].samples[0] && output[1]==output[0] && output[2]==bank.sounds[BLAZE_LIG].samples[1]);
     for(i=0;i<5;++i)blaze_mixer_play(&mix,BLAZE_SHT);
     CHECK(mix.next[BLAZE_SHT]==5);for(i=0;i<4;++i)CHECK(mix.voices[BLAZE_SHT][i].active && !mix.voices[BLAZE_SHT][i].position);
-    CHECK(blaze_app_open(a,argv[1],argv[2]));blaze_app_set_media(a,&media);
+    CHECK(blaze_app_open(a,argv[1],argv[2],NULL));blaze_app_set_media(a,&media);
     CHECK(!strcmp(a->tracks[3][0].file,"blz_optf.mid")); /* First duplicate Option1 wins. */
     for(i=0;i<6;++i) {
         BlazeRandom expected=a->random;a->music=(int)i;

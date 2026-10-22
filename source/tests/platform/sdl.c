@@ -1,6 +1,8 @@
 /* Exercise the real SDL renderer and virtual input without focus or real input. */
+#ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#endif
 #define SDL_MAIN_HANDLED
 #define main blaze_sdl_entry
 #include "../../platform/sdl.c"
@@ -18,13 +20,20 @@ int main(int argc,char **argv) {
     SDL_Surface *readback=NULL;SDL_JoystickID virtual_id=0;SDL_VirtualJoystickDesc desc;
     bool keys[SDL_SCANCODE_COUNT]={0};BlazeControls c;unsigned i;int result=1;
     BlazeSdlAudio audio={0};BlazeApp *app=calloc(1,sizeof(*app));
+#ifdef _WIN32
     HWND foreground=GetForegroundWindow();
+#define FOREGROUND_UNCHANGED (GetForegroundWindow()==foreground)
+#else
+#define FOREGROUND_UNCHANGED (!(SDL_GetWindowFlags(p->window)&SDL_WINDOW_INPUT_FOCUS))
+#endif
     SDL_SetMainReady();CHECK(SDL_SetHint(SDL_HINT_AUDIO_DRIVER,"dummy"));
     CHECK(argc==3 && p && frame && app && SDL_Init(SDL_INIT_VIDEO|SDL_INIT_JOYSTICK));
     CHECK(SDL_CreateWindowAndRenderer("BLAZE",640,480,SDL_WINDOW_HIDDEN,&p->window,&p->renderer));
-    CHECK(!strcmp(SDL_GetWindowTitle(p->window),"BLAZE") && GetForegroundWindow()==foreground);
+    CHECK(!strcmp(SDL_GetWindowTitle(p->window),"BLAZE") && FOREGROUND_UNCHANGED);
+    #ifdef _WIN32
     {HWND hwnd=(HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(p->window),SDL_PROP_WINDOW_WIN32_HWND_POINTER,NULL);
         CHECK(hwnd && GetClassLongPtrA(hwnd,GCLP_HICON));}
+    #endif
     p->texture=SDL_CreateTexture(p->renderer,SDL_PIXELFORMAT_RGBA32,SDL_TEXTUREACCESS_STREAMING,320,240);
     CHECK(p->texture && SDL_SetTextureScaleMode(p->texture,SDL_SCALEMODE_NEAREST));
     frame->palette[4]=0x33;frame->palette[5]=0x66;frame->palette[6]=0xcc;
@@ -57,10 +66,10 @@ int main(int argc,char **argv) {
     SDL_UpdateJoysticks();CHECK(joystick_actions(&c,p->joystick)==(BLAZE_UP|BLAZE_RIGHT));
     controls_key(&c,"ButtonFire",32);CHECK(SDL_SetJoystickVirtualHat(p->joystick,0,SDL_HAT_CENTERED) && SDL_SetJoystickVirtualButton(p->joystick,31,true));
     SDL_UpdateJoysticks();CHECK(joystick_actions(&c,p->joystick)==BLAZE_CONFIRM);
-    CHECK(!poll_input(p) && GetForegroundWindow()==foreground);
+    CHECK(!poll_input(p) && FOREGROUND_UNCHANGED);
     {
         SDL_Event event={0};BlazeSettings reload={0};char rop[1200],preview[1200],saved_path[1200];unsigned tick,n;
-        CHECK(blaze_path(rop,sizeof(rop),SDL_GetBasePath(),"resources/rop.bin") && blaze_app_open(app,argv[1],rop));
+        CHECK(blaze_path(rop,sizeof(rop),SDL_GetBasePath(),"resources/rop.bin") && blaze_app_open(app,argv[1],rop,NULL));
         CHECK(blaze_settings_paths(&p->files,argv[2]));controls_defaults(&p->files.controls);p->focused=1;
         remove(p->files.controls_path);tick=app->tick;
         press(p,app,SDL_SCANCODE_F10);CHECK(p->editor.active && app->pause_flags==4);
@@ -129,10 +138,41 @@ int main(int argc,char **argv) {
         CHECK(SDL_DetachVirtualJoystick(virtual_id));virtual_id=0;
         CHECK(!platform_event(p,app,&event,0) && p->editor.capture==-1 && !p->editor.pad && p->editor.active);
         press(p,app,SDL_SCANCODE_ESCAPE);
-        CHECK(GetForegroundWindow()==foreground);remove(p->files.controls_path);
+        CHECK(FOREGROUND_UNCHANGED);remove(p->files.controls_path);
     }
     CHECK(!SDL_JoystickConnected(p->joystick));
     p->files.controls.device=0;pad_refresh(p);CHECK(!p->joystick);
+    {
+        BlazeSettings user={0},disabled={0};char directory[1200],file[1200],actual[1200],requested[1200],rop[1200];
+        FILE *f;uint8_t *bytes=NULL;size_t size=0;
+        CHECK(blaze_path(directory,sizeof(directory),argv[2],"paths-\xc3\xa7-\xe6\xb8\xb8"));
+        CHECK(blaze_sdl_paths(&user,argv[1],directory,1,0));
+        CHECK(blaze_sdl_paths(&disabled,argv[1],"none",0,0) && !disabled.path[0]);
+        f=blaze_fopen(user.path,"wb");CHECK(f);
+        CHECK(fputs("[Enh]\nTime=41\nWeaponName1=PORTABLE\nWeaponPower1=7\n[MIDI]\nStart1=blz_sg1f.mid\n",f)>=0 && !fclose(f));
+        /* Seeding again must preserve edits, including fields not written by
+           the options menu. Startup must use this full user configuration. */
+        CHECK(blaze_sdl_paths(&user,argv[1],directory,1,0));
+        blaze_app_close(app);CHECK(blaze_path(rop,sizeof(rop),SDL_GetBasePath(),"resources/rop.bin"));
+        CHECK(blaze_app_open(app,argv[1],rop,directory));
+        CHECK(app->frame_ms==41 && !strcmp(app->loadout.weapons[0].name,"PORTABLE") && app->loadout.weapons[0].power==7);
+        CHECK(!strcmp(app->tracks[0][0].file,"blz_sg1f.mid"));
+        controls_defaults(&user.controls);user.controls.keys[4]='B';CHECK(blaze_settings_controls(&user));
+        CHECK(blaze_settings_load(&user,app) && user.controls.keys[4]=='B');
+        CHECK(blaze_settings_options(&user,2,1,1) && blaze_settings_load(&user,app) && app->level==2);
+        CHECK(blaze_path(file,sizeof(file),directory,"CaseDir") && SDL_CreateDirectory(file));
+        CHECK(blaze_path(actual,sizeof(actual),file,"MiXeD.bin"));f=blaze_fopen(actual,"wb");CHECK(f);
+        CHECK(fwrite("case-fixture",1,12,f)==12 && !fclose(f));
+        CHECK(blaze_path(requested,sizeof(requested),directory,"casedir\\mixed.BIN"));
+        CHECK(blaze_file_read(requested,&bytes,&size) && size==12 && !memcmp(bytes,"case-fixture",12));free(bytes);bytes=NULL;
+#ifndef _WIN32
+        CHECK(blaze_path(requested,sizeof(requested),file,"mixed.BIN"));f=blaze_fopen(requested,"wbx");CHECK(f);CHECK(!fclose(f));
+        CHECK(blaze_path(requested,sizeof(requested),file,"MIXED.BIN"));CHECK(!blaze_asset_open(requested));
+        CHECK(blaze_path(requested,sizeof(requested),file,"mixed.BIN"));CHECK(!blaze_file_remove(requested));
+#endif
+        CHECK(!blaze_file_remove(actual));
+        CHECK(!blaze_file_remove(user.path) && !blaze_file_remove(user.score_path) && !blaze_file_remove(user.controls_path));
+    }
     {
         BlazeMusicStatus status={0};unsigned n;
         CHECK(blaze_sdl_audio_open(&audio,argv[1],1));

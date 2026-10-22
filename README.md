@@ -5,9 +5,9 @@ no CPU/x87 interpreter, generated instruction execution or original executable
 is used by the shipping target. Five stages, bosses, weapons, menus, SFX/MIDI,
 pause, controls and score/unlock persistence are connected.
 
-Windows x86/x64 are locally tested. Windows ARM64 is configured for native CI;
-Linux x64/ARM64 and macOS ARM64 currently build core checks only. Their playable
-SDL3 backend is in progress. A Windows SDL3 candidate now handles presentation,
+Windows x86/x64 are locally tested. Real SDL application candidates are configured
+for Windows ARM64, Linux x64/ARM64 and macOS ARM64; their native CI builds/runs
+are still unverified. The SDL3 candidate handles presentation,
 keyboard/joystick input, PCM SFX, software MIDI, an in-window controls editor and
 pacing. A complete natural campaign and physical
 controller acceptance remain open.
@@ -31,8 +31,27 @@ To build the SDL3 candidate, add `-Backend SDL3`. It fetches checksum-pinned SDL
 3.4.18, FluidSynth 2.6.1 and the GeneralUser GS instrument bank, and shares the
 same game/settings owners. Music timbre differs from the Windows system synth;
 listening acceptance remains open. Use `-NoDeploy` to keep root `blaze.exe` on
-the stable Win32 backend. SDL3 is not yet a Unix runtime: case-aware asset lookup
-and installed-user paths remain to be connected. CD playback remains deferred.
+the stable Win32 backend. Asset lookup and writable paths are connected; Unix
+build/run acceptance remains open. CD playback remains deferred.
+
+On Linux/macOS, build the SDL application with CMake and a C/C++ toolchain:
+
+```sh
+cmake -S source -B source/build/native -DBLAZE_PLATFORM=SDL3 -DCMAKE_BUILD_TYPE=Release
+cmake --build source/build/native --parallel 3
+cmake --install source/build/native --prefix source/build/stage --component Runtime
+```
+
+Build trees share immutable assets and run without `--assets`. Linux installs
+`blaze`; macOS installs `Blaze.app` with bundled assets/library. Native execution
+on those systems is not yet confirmed; dependency setup is in the candidate CI.
+Windows retains executable-adjacent `dat/`. Linux/macOS use SDL's user-data
+directory with a `dat/` subfolder. `--portable` selects executable-adjacent data
+on Linux; macOS bundles always use external writable storage. `--settings DIR`
+selects an explicit directory; `--settings none` disables writes. Fresh folders
+receive the original two INI defaults once, preserving later edits and full
+startup configuration. Asset reads accept legacy backslashes and Unix ASCII
+case differences; ambiguous case matches are rejected. UTF-8 paths are supported.
 
 Arrow keys move/navigate, **Z** fires/confirms, **X** uses the ship ability/cancels,
 **Esc** pauses, **F2** returns to title, **F9** exits and **F10** edits controls.
@@ -58,11 +77,11 @@ for ordinary builds. For a self-contained runtime package, see
 The ignored `game-recomp/` retains the private Git history, original inputs,
 extraction and executable differential tools. It is not a public build dependency.
 
-CI checks six native architectures, distinguishing application builds from core
-checks. Windows runtime ZIPs are configured now. The manually dispatched release
+CI separates the comparison builds/core checks from six real SDL application
+candidates. Candidate ZIP/tar.gz/macOS app/DMG packaging is configured but Unix/ARM
+execution remains unverified. The manually dispatched release
 workflow resolves an existing tag to its commit and requires all six runtime
-packages before publishing; release publication is blocked until SDL3 integration.
-Linux tar.gz and an ad-hoc-signed macOS app/DMG are planned. See
+packages before publishing; candidates are not yet promoted to release runtimes. See
 [CI/release details](docs/BUILDING.md#ci-and-releases).
 
 This is still under testing. Fixtures reach later bosses through controlled state;

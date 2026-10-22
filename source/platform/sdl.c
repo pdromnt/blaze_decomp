@@ -5,6 +5,8 @@
 #include "settings.h"
 #include "sdl_controls.h"
 #include "sdl_keys.h"
+#include "sdl_paths.h"
+#include "blaze_files.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -114,7 +116,7 @@ static int platform_event(SdlPlatform *p,BlazeApp *a,const SDL_Event *event,int 
     return 0;
 }
 static int dump_frame(const char *path,const BlazeFrame *frame) {
-    FILE *f=fopen(path,"wb");unsigned i;if(!f)return 0;
+    FILE *f=blaze_fopen(path,"wb");unsigned i;if(!f)return 0;
     if(fprintf(f,"P6\n320 240\n255\n")<0) {fclose(f);return 0;}
     for(i=0;i<320*240;++i) {
         const uint8_t *c=frame->palette+frame->pixels[i]*4;uint8_t rgb[]={c[2],c[1],c[0]};
@@ -124,13 +126,14 @@ static int dump_frame(const char *path,const BlazeFrame *frame) {
 }
 int main(int argc,char **argv) {
     SdlPlatform *p=calloc(1,sizeof(*p));BlazeApp *a=calloc(1,sizeof(*a));BlazeSdlAudio *audio=calloc(1,sizeof(*audio));
-    char rop[1200],folder[1200];const char *root=NULL,*requested=NULL,*dump=NULL,*input=NULL;
-    unsigned frames=0,limit=0,seed=0;int hidden=0,muted=0,explicit_audio=0,has_seed=0,quit=0,result=1,i,initialized=0;
+    char rop[1200],configuration[1200];const char *root=NULL,*requested=NULL,*dump=NULL,*input=NULL;
+    unsigned frames=0,limit=0,seed=0;int hidden=0,muted=0,explicit_audio=0,has_seed=0,quit=0,result=1,i,initialized=0,portable=0;
     uint8_t *script=NULL;size_t script_size=0;Uint64 next=0,started=0,previous=0;unsigned period=40,overruns=0;
     double work_total=0,work_max=0,interval_min=1e30,interval_max=0;
     if(!p || !a || !audio)goto done;
     for(i=1;i<argc;++i) {
         if(!strcmp(argv[i],"--hidden"))hidden=1;
+        else if(!strcmp(argv[i],"--portable"))portable=1;
         else if(!strcmp(argv[i],"--mute")) {muted=1;explicit_audio=1;}
         else if(!strcmp(argv[i],"--audio")) {muted=0;explicit_audio=1;}
         else if(!strcmp(argv[i],"--assets") && i+1<argc)root=argv[++i];
@@ -152,12 +155,13 @@ int main(int argc,char **argv) {
     if(!SDL_Init(SDL_INIT_VIDEO|SDL_INIT_JOYSTICK))goto done;initialized=1;
     if(!SDL_GetBasePath())goto done;
     if(!root)root=SDL_GetBasePath();
-    if(!blaze_path(rop,sizeof(rop),SDL_GetBasePath(),"resources/rop.bin") || !blaze_app_open(a,root,rop))goto done;
-    if(requested && !strcmp(requested,"none"))requested=NULL;
-    else if(!requested && !hidden) {
-        if(!blaze_path(folder,sizeof(folder),SDL_GetBasePath(),"dat"))goto done;requested=folder;
+    if(!blaze_sdl_paths(&p->files,root,requested,hidden,portable)) {
+        fprintf(stderr,"Cannot prepare settings directory: %s\n",requested?requested:"platform default");goto done;
     }
-    if(!blaze_settings_paths(&p->files,requested) || !blaze_settings_load(&p->files,a) || !bindings_supported(&p->files.controls))goto done;
+    configuration[0]=0;
+    if(p->files.path[0]) {char *slash;strcpy(configuration,p->files.path);slash=strrchr(configuration,'/');if(!slash)goto done;*slash=0;}
+    if(!blaze_path(rop,sizeof(rop),SDL_GetBasePath(),"resources/rop.bin") || !blaze_app_open(a,root,rop,configuration[0]?configuration:NULL))goto done;
+    if(!blaze_settings_load(&p->files,a) || !bindings_supported(&p->files.controls))goto done;
     if(!blaze_sdl_audio_open(audio,root,muted))goto done;
     blaze_app_set_media(a,&audio->media);if(has_seed)blaze_random_begin(&a->random,seed);
     if(!SDL_CreateWindowAndRenderer("BLAZE",640,480,SDL_WINDOW_HIDDEN|SDL_WINDOW_RESIZABLE,&p->window,&p->renderer))goto done;

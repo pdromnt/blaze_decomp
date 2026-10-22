@@ -20,7 +20,7 @@ static int settle(BlazeApp *a) {while(a->tick<25)if(!blaze_app_tick(a,0))return 
 int main(int argc,char **argv) {
     BlazeApp *a=calloc(1,sizeof(*a));Services s={0};unsigned i,cycle;int result=1;
     BlazeMedia media={&s,sound,load,play,stop,NULL,ended};
-    CHECK(argc==3 && a && blaze_app_open(a,argv[1],argv[2]));
+    CHECK(argc==3 && a && blaze_app_open(a,argv[1],argv[2],NULL));
     a->settings_context=&s;a->apply_display=display;a->save_options=save;
     blaze_app_set_media(a,&media);a->music=1;
     for(i=0;i<40;++i)CHECK(blaze_app_tick(a,0));

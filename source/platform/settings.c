@@ -2,6 +2,7 @@
 #define _POSIX_C_SOURCE 200809L
 #endif
 #include "settings.h"
+#include "blaze_files.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,7 +29,7 @@ int blaze_settings_load(BlazeSettings *s,BlazeApp *a) {
     const char *paths[]={s->path,s->score_path,s->controls_path};
     controls_defaults(&s->controls);
     for(kind=0;kind<3;++kind)if(paths[kind][0]) {
-        section[0]=0;f=fopen(paths[kind],"rb");if(!f && errno!=ENOENT)return 0;
+        section[0]=0;f=blaze_fopen(paths[kind],"rb");if(!f && errno!=ENOENT)return 0;
         if(f) {
             while(fgets(line,sizeof(line),f)) {
                 long value;char *end;unsigned i;
@@ -77,7 +78,7 @@ static int update_ini(const char *path,const char *section,IniValue *values,unsi
     uint8_t *bytes=NULL;size_t size=0,offset=0;char temporary[1280];FILE *f=NULL,*input;
     int ok=0,in_section=0,seen_section=0,owned=0;unsigned attempt;
     if(!*path)return 1;
-    input=fopen(path,"rb");
+    input=blaze_fopen(path,"rb");
     if(input) {
         long length;
         if(fseek(input,0,SEEK_END) || (length=ftell(input))<0 || length>4*1024*1024 || fseek(input,0,SEEK_SET)) {fclose(input);return 0;}
@@ -93,7 +94,7 @@ static int update_ini(const char *path,const char *section,IniValue *values,unsi
         unsigned long pid=(unsigned long)getpid();
 #endif
         if(snprintf(temporary,sizeof(temporary),"%s.%lu.%u.tmp",path,pid,attempt)>=(int)sizeof(temporary))goto done;
-        f=fopen(temporary,"wbx");if(f) {owned=1;break;}if(errno!=EEXIST)goto done;
+        f=blaze_fopen(temporary,"wbx");if(f) {owned=1;break;}if(errno!=EEXIST)goto done;
     }
     if(!f)goto done;
     while(offset<size) {
@@ -132,14 +133,10 @@ static int update_ini(const char *path,const char *section,IniValue *values,unsi
     if(fsync(fileno(f)))goto done;
 #endif
     {int closed=fclose(f);f=NULL;if(closed)goto done;}
-#ifdef _WIN32
-    ok=MoveFileExA(temporary,path,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)!=0;
-#else
-    ok=rename(temporary,path)==0;
-#endif
+    ok=blaze_file_replace(temporary,path);
 done:
     if(f)fclose(f);
-    if(!ok && owned)remove(temporary);
+    if(!ok && owned)blaze_file_remove(temporary);
     free(bytes);return ok;
 }
 int blaze_settings_options(BlazeSettings *s,int level,int display,int music) {

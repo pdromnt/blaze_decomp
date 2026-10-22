@@ -63,8 +63,12 @@ static void load_device(BlazeWindowsMusic *m,const MusicRequest *r) {
     }
     if(m->muted) {t->valid=1;return;}
     snprintf(alias,sizeof(alias),"blaze-%p-%u",(void *)m,r->slot);
-    open.lpstrDeviceType="sequencer";open.lpstrElementName=r->path;open.lpstrAlias=alias;
-    if(command(0,MCI_OPEN,MCI_OPEN_TYPE|MCI_OPEN_ELEMENT|MCI_OPEN_ALIAS|MCI_WAIT,(DWORD_PTR)&open)) {t->device=open.wDeviceID;t->valid=1;}
+    {MCI_OPEN_PARMSW unicode={0};wchar_t path[1200],wide_alias[64];
+    if(!MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,r->path,-1,path,1200) ||
+       !MultiByteToWideChar(CP_UTF8,0,alias,-1,wide_alias,64))return;
+    unicode.lpstrDeviceType=L"sequencer";unicode.lpstrElementName=path;unicode.lpstrAlias=wide_alias;
+    if(!mciSendCommandW(0,MCI_OPEN,MCI_OPEN_TYPE|MCI_OPEN_ELEMENT|MCI_OPEN_ALIAS|MCI_WAIT,(DWORD_PTR)&unicode)) {t->device=unicode.wDeviceID;t->valid=1;}
+    else fprintf(stderr,"Audio: cannot open MIDI %s\n",r->path);}
 }
 static int start_device(BlazeWindowsMusic *m) {
     MusicTrack *t=&m->tracks[m->active];MCI_PLAY_PARMS play={0};DWORD_PTR flags=MCI_FROM;

@@ -102,11 +102,17 @@ jobs:
           retention-days: 7
   sdl-candidate:
     name: SDL3 Windows ${{ matrix.architecture }} candidate
-    runs-on: windows-2022
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        architecture: [x86, x64]
+        include:
+          - architecture: x86
+            runner: windows-2022
+          - architecture: x64
+            runner: windows-2022
+          - architecture: ARM64
+            runner: windows-11-arm
     steps:
       - uses: actions/checkout@v6
         with:
@@ -117,7 +123,8 @@ jobs:
       - name: Stage SDL candidate
         shell: pwsh
         run: |
-          cmake --install source/build/windows-${{ matrix.architecture }}-sdl3 --config Release --prefix source/build/sdl-stage --component Runtime
+          $build='source/build/windows-${{ matrix.architecture }}-sdl3'.ToLowerInvariant()
+          cmake --install $build --config Release --prefix source/build/sdl-stage --component Runtime
           if($LASTEXITCODE){throw 'SDL runtime installation failed.'}
       - name: Run bounded menu/combat/pause/abort route
         shell: pwsh
@@ -134,10 +141,80 @@ jobs:
           }
       - name: Package separate candidate (not a release runtime)
         shell: pwsh
-        run: ./source/scripts/package-release.ps1 -Version sdl3-candidate -Platform 'windows-${{ matrix.architecture }}' -StageDirectory source/build/sdl-stage
+        run: |
+          $platform='windows-${{ matrix.architecture }}'.ToLowerInvariant()
+          ./source/scripts/package-release.ps1 -Version sdl3-candidate -Platform $platform -StageDirectory source/build/sdl-stage
       - uses: actions/upload-artifact@v7
         with:
           name: sdl3-candidate-windows-${{ matrix.architecture }}
+          path: source/dist/*
+          if-no-files-found: error
+          retention-days: 7
+  sdl-unix-candidate:
+    name: SDL3 ${{ matrix.platform }} application candidate
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x64
+            runner: ubuntu-24.04
+          - platform: linux-arm64
+            runner: ubuntu-24.04-arm
+          - platform: macos-arm64
+            runner: macos-15
+    env:
+      SDL_VIDEODRIVER: dummy
+      SDL_AUDIODRIVER: dummy
+      SDL_RENDER_DRIVER: software
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.source_ref || github.sha }}
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ninja-build pkg-config libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev libwayland-dev libxkbcommon-dev libasound2-dev libpulse-dev libudev-dev libdrm-dev libgbm-dev libegl1-mesa-dev libgl1-mesa-dev
+      - name: Build the real SDL application and checks
+        run: |
+          cmake -S source -B source/build/sdl-native -DCMAKE_BUILD_TYPE=Release -DBLAZE_PLATFORM=SDL3 -DBLAZE_BUILD_APPLICATION=ON -DBUILD_TESTING=ON
+          cmake --build source/build/sdl-native --parallel 3
+          ctest --test-dir source/build/sdl-native --output-on-failure
+      - name: Stage the relocatable runtime
+        run: cmake --install source/build/sdl-native --prefix source/build/sdl-stage --component Runtime
+      - name: Check staged library lookup
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            readelf -d source/build/sdl-stage/blaze | grep -F '$ORIGIN'
+            ldd source/build/sdl-stage/blaze | grep 'libfluidsynth.so.3 => .*/sdl-stage/.*libfluidsynth'
+          else
+            otool -L source/build/sdl-stage/Blaze.app/Contents/MacOS/Blaze | grep -F '@rpath/libfluidsynth.3.dylib'
+            otool -l source/build/sdl-stage/Blaze.app/Contents/MacOS/Blaze | grep -F '@executable_path/../Frameworks'
+          fi
+      - name: Run bounded application/menu/combat/pause/abort route
+        timeout-minutes: 2
+        shell: pwsh
+        run: |
+          $binary=if($IsMacOS){'Blaze.app/Contents/MacOS/Blaze'}else{'blaze'}
+          $exe=(Resolve-Path "source/build/sdl-stage/$binary").Path
+          $input=(Resolve-Path source/tests/fixtures/menu-combat.input).Path
+          $dump=Join-Path $env:RUNNER_TEMP 'blaze-final.ppm'
+          $process=Start-Process $exe -ArgumentList '--hidden','--audio','--frames','901','--seed','1','--settings','none','--input-script',$input,'--dump-frame',$dump -WorkingDirectory $env:RUNNER_TEMP -PassThru
+          try {
+            if(!$process.WaitForExit(55000)){throw 'SDL gameplay route timed out.'}
+            if($process.ExitCode -ne 0){throw "SDL gameplay route exited $($process.ExitCode)."}
+          } finally {
+            if(!$process.HasExited){$process.Kill()}
+            $process.Dispose()
+          }
+          if((Get-FileHash $dump).Hash -ne 'B83704A703B65E2A39367262C04DD306BBB7068C9480E65FF028039EBB9ACB3C'){throw 'Gameplay frame differs from the Windows reference.'}
+      - name: Package separate candidate
+        shell: pwsh
+        run: ./source/scripts/package-release.ps1 -Version sdl3-candidate -Platform '${{ matrix.platform }}' -StageDirectory source/build/sdl-stage
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sdl3-candidate-${{ matrix.platform }}
           path: source/dist/*
           if-no-files-found: error
           retention-days: 7

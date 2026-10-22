@@ -34,6 +34,8 @@ if($identity.Contains('BLAZE_NATIVE_C: SDL3')) {
         if(!(Test-Path -LiteralPath (Join-Path $assets $name))){throw "SDL MIDI runtime content missing: $name"}
     }
     if($Platform.StartsWith('windows-') -and !(Test-Path -LiteralPath (Join-Path $assets 'libfluidsynth-3.dll'))){throw 'SDL MIDI synthesizer DLL missing.'}
+    if($Platform.StartsWith('linux-') -and !(Test-Path -LiteralPath (Join-Path $assets 'libfluidsynth.so.3'))){throw 'SDL MIDI synthesizer shared library missing.'}
+    if($Platform -eq 'macos-arm64' -and !(Test-Path -LiteralPath (Join-Path $stage 'Blaze.app/Contents/Frameworks/libfluidsynth.3.dylib'))){throw 'SDL MIDI synthesizer dylib missing.'}
 }
 if($Platform.StartsWith('windows-')){
     if($bytes.Length -lt 64 -or $bytes[0] -ne 77 -or $bytes[1] -ne 90){throw 'Invalid PE.'}

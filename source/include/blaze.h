@@ -226,7 +226,8 @@ typedef struct {
     char stage_music_name[80];
 } BlazeApp;
 /* Open a fresh app, then close even if open fails. Close before reopening. */
-int blaze_app_open(BlazeApp *app, const char *root, const char *rop_path);
+/* NULL configuration uses root/dat. Asset and configuration owners are separate. */
+int blaze_app_open(BlazeApp *app, const char *root, const char *rop_path,const char *config_directory);
 /* Returns 0 on construction/resource failure; unrecovered routes set BLOCKED. */
 /* Game-over frame execution; transitions are completed by the application owner. */
 int blaze_game_over_tick(BlazeApp *app,unsigned input);
