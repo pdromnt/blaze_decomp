@@ -1,4 +1,5 @@
 /* Exercise the real SDL renderer and virtual input without focus or real input. */
+#include <errno.h>
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
