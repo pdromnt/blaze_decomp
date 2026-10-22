@@ -23,6 +23,10 @@ are independent and preserved on rebuild. Without -NoDeploy, the helper replaces
 root blaze.exe after successful build/checks and deploys required dependencies;
 existing root INIs and the preserved original remain intact.
 
+The Windows SDL executable uses the GUI subsystem, so opening it does not create
+a console window. Redirect stdout/stderr when collecting command-line diagnostics.
+Options supports 1x/2x/3x windows (320x240, 640x480, 960x720) and fullscreen.
+
 ```powershell
 cmake --install source/build/windows-x64-sdl3 --config RelWithDebInfo --prefix source/build/sdl-stage --component Runtime
 ./source/scripts/package-release.ps1 -Version snapshot -Platform windows-x64 -StageDirectory source/build/sdl-stage

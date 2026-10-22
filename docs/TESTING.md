@@ -30,6 +30,8 @@ Please include the CI commit/run, OS/version, architecture, display mode and
 exact route with a report. Useful manual coverage:
 
 - Menus/transitions, F10 save/cancel, restarting and retaining options/controls.
+- Switch 1x/2x/3x windows and fullscreen; restart with 3x saved. The Windows SDL
+  game should open without a separate console window.
 - Movement, camera/views, all weapons/abilities, hits/damage and pickups.
 - Music changes/loops, SFX quality and pause/focus/minimize/restore.
 - Boss backgrounds/unlocks, completion/debriefing, ending and score persistence.

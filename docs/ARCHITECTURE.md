@@ -62,6 +62,13 @@ The two scaled full-screen entries share aspect-preserving presentation (SDL
 renderer, or GDI in the comparison backend); original exclusive
 mode/driver parity is not claimed. Startup remains windowed by policy.
 
+Windowed 3x (960x720) is a deliberate extension. It uses persisted `Screen=5`;
+legacy IDs 0..4 retain their original meaning. The menu orders windows 1x/2x/3x
+before fullscreen without renumbering stored IDs. Both platform backends support
+the new mode; saved 3x restores at startup, while fullscreen still starts windowed.
+The Windows SDL application links as a GUI executable through SDL's main entry
+support. Console-based test executables and the Win32 comparison remain separate.
+
 Cadence now reads `[Enh] Time` as a millisecond interval, as WinMain `0x402920`
 passes to `0x4179b0` and the `0x417bf0` callback. The shipped 40 means 25 ticks/sec;
 the original missing-key default is 25 ms (40 ticks/sec). Native startup clamps

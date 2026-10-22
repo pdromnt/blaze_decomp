@@ -1,5 +1,8 @@
 # Private recovery history, immutable original snapshot and executable oracles
 /game-recomp/
+# Local working notes are never published.
+/docs/plan.md
+/docs/handoff.md
 # Reproducible binaries / build and release staging
 /source/build/
 /source/dist/
