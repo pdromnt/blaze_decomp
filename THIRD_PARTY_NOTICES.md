@@ -14,9 +14,11 @@ The current Windows backend links Windows SDK system libraries (User32, GDI32
 and WinMM). Windows MIDI playback uses the user's installed MIDI device/synth;
 no synthesizer, SoundFont or commercial music download is bundled.
 
-SDL3 is planned, not yet linked or bundled. Select a pinned official release and
-preserve its zlib license when integrating it. A portable MIDI synthesizer and
-instrument bank still require selection and their own notices/licensing review.
+The optional SDL3 backend statically links official SDL 3.4.18 under the zlib
+license, preserved in `source/third_party/SDL3-LICENSE.txt` and its runtime package.
+Source downloads are SHA-256 pinned in `source/cmake/sdl.cmake`; no SDL source is
+modified. The Win32 comparison backend does not link SDL. A portable MIDI
+synthesizer/instrument bank still require selection and their own notices.
 
 No project-wide license has been selected for the reconstructed source. Before
 public distribution, separately establish code, original asset, music and

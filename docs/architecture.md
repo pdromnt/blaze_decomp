@@ -631,15 +631,18 @@ Windows updates original `[Enh]` keys in `dat/Blz.ini`, `[Score]` keys in
 `dat/BlzScr.ini`, and native `[Input]` keys in `dat/BlzCtrl.ini`, beneath the
 executable directory. Each callback touches only its own file. There is no
 parallel options snapshot or borrowed app pointer in the platform settings owner.
-Writes copy the current file to a PID-specific temporary, update individual keys
-with the profile API, flush and atomically replace it. Unknown keys, weapon/track
+Both backends use `platform/settings.c` and `controls.c`; the old Win32 profile
+writer and duplicated input storage are retired. The shared writer creates an
+exclusive temporary, preserves unknown bytes while updating owned integer keys,
+flushes/syncs and atomically replaces the file. Unknown keys, weapon/track
 definitions and ID survive. ClearMode fields update with their corresponding
 scores in the same atomic replacement. Failure removes the temporary and retains
 the previous file; errors propagate to the app. Controls saves never rewrite
 scores/options, so windowed startup cannot overwrite saved full-screen intent.
 
-The build seeds the two original-format INIs once into an owned real `dat/`
-directory; immutable DAT files use hard links, other asset folders junctions.
+The public build seeds the two original-format INIs once into the real root
+`dat/` directory beside existing game assets. Test fixtures share immutable files
+through hard links (copy fallback) and own their default INIs.
 Subsequent builds preserve the local INIs. Invalid/out-of-range numbers are
 ignored, and title high score reflects the loaded ranking. Hidden defaults and
 `--settings none` disable writes; asset-root INIs remain startup configuration.
@@ -647,6 +650,17 @@ ignored, and title high score reflects the loaded ranking. Hidden defaults and
 awards, ending ranking/unlock, mixed option writes, unknown-key preservation,
 separate controls, full-screen preference retention and locked-file recovery. This
 stores progress only, not a resumable campaign or mid-mission state.
+
+The optional `BLAZE_PLATFORM=SDL3` application uses the same `BlazeApp` and game
+renderer. A streaming RGBA texture expands the authoritative indexed framebuffer;
+no parallel game-state representation exists. SDL owns its window, renderer,
+texture and current joystick; disconnect/editor changes close that joystick.
+Keyboard IDs remain the persisted VK format, translated explicitly to SDL keys;
+unmapped IDs fail visibly instead of being ignored. SDL does not capture the
+mouse or accept unfocused gameplay input. Windowed/letterboxed/centered display
+and monotonic `Time` deadlines retain the existing simulation cadence. This first
+candidate explicitly retains WinMM media and the Windows F10 editor; it is not
+yet a portable Unix application. The default Win32 target remains available.
 
 Live Ghidra audit of the remaining legacy keys (2026-10-21):
 - `Clear`: 0x401e8c reads it once into application offset 0x98. No subsequent

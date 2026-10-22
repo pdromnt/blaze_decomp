@@ -2,7 +2,10 @@
 
 Targets: Windows x86/x64/ARM64, Linux x64/ARM64, macOS ARM64. Windows x86/x64
 currently run the application; ARM64 Windows is configured but not locally built.
-Unix CI initially checks the ordinary-C core. SDL3 is not integrated yet.
+Unix CI checks the ordinary-C core and shared settings. The optional SDL3 Windows
+candidate now runs the real application with SDL presentation/input/timing; it
+retains the existing WinMM media owner and native F10 editor. Default remains
+Win32. No Unix runtime or ARM execution is claimed at this checkpoint.
 
 ## Keep the game and its owners
 
@@ -14,20 +17,24 @@ Do not add a second writable game state or redesign the renderer.
 
 ## Connected batches, in order
 
-1. **Paths, settings and controls storage.** Extract the existing strict INI
-   loading/atomic replacement from `windows.c` into a portable service. Retain
-   unknown keys, score/mode pairing and three-file ownership. Separate asset root
+1. **Paths, settings and controls storage.** Shared C storage is integrated in
+   both backends: strict numeric loading, exclusive temporary creation, flush and
+   atomic replacement, unknown byte preservation, score/mode pairing and three-file
+   ownership. All owned duplicate keys update together; collision failure must not
+   remove another owner's temp file. Remaining work: fully separate asset root
    from writable root; retain executable-adjacent `dat/` on Windows and portable
    Linux packages. Installed Linux/macOS use a writable user directory with the
    same `dat/Blz.ini`, `BlzScr.ini`, `BlzCtrl.ini` names. No writes into app bundles.
    Do not silently switch Windows to AppData. Preserve existing Windows key/button
    bindings through an explicit mapping; SDL scancodes are not Win32 VK values.
    Handle asset filename casing and legacy INI backslash paths explicitly on Unix.
-2. **SDL application, window/input/pacing.** Pin and checksum an official SDL3
-   release. Create window, renderer and one streaming RGBA texture; expand the
-   existing palette framebuffer into presentation pixels, nearest-neighbor scale
-   and letterbox it. Retain all screen modes without desktop resolution changes.
-   Implement keyboard/gamepad/joystick hotplug, F10 editor, focus/minimize/restore,
+2. **SDL application, window/input/pacing.** SDL 3.4.18 is pinned/checksummed and
+   statically linked in the Windows candidate. Its window/renderer/streaming RGBA
+   texture, palette expansion, nearest-neighbor scaling, action masks and monotonic
+   frame clock are connected. F10 still opens the Win32 editor; replace that
+   dependency before enabling Unix. Preserve the current
+   palette framebuffer, letterboxing and all screen modes without desktop changes.
+   Validate keyboard/gamepad/joystick hotplug, F10 editor, focus/minimize/restore,
    pause, main/quit and bounded hidden/scripted runs. Devices/window/texture have
    one platform owner. Retain `Time=40`, monotonic deadlines and no catch-up bursts;
    presentation/VSync must not change simulation or RNG cadence. Gate on menus,

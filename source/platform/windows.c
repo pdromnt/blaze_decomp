@@ -10,6 +10,7 @@
 #include <limits.h>
 #include <ctype.h>
 #include "windows_input.h"
+#include "settings.h"
 
 /* Original 0x402a93 -> 0x4179b0 passes INI Time as milliseconds,
    not Hz. Keep tick deadlines independent of work duration, without replaying
@@ -34,11 +35,10 @@ typedef struct {
     HWND window;
     int mode;
     RECT windowed;
-    BlazeControls controls;
-    char path[1200],score_path[1200],controls_path[1200];
+    BlazeSettings storage;
 } WindowSettings;
 static int settings_location(WindowSettings *s,const char *directory,const char *requested,int hidden) {
-    char folder[1200],absolute[1200];DWORD length;s->path[0]=s->score_path[0]=s->controls_path[0]=0;
+    char folder[1200],absolute[1200];DWORD length;blaze_settings_paths(&s->storage,NULL);
     if(requested) {
         if(!strcmp(requested,"none"))return 1;
         if(strlen(requested)>=sizeof(folder))return 0;strcpy(folder,requested);
@@ -46,12 +46,10 @@ static int settings_location(WindowSettings *s,const char *directory,const char 
         if(hidden)return 1;
         if(!blaze_path(folder,sizeof(folder),directory,"dat"))return 0;
     }
-    /* Profile APIs otherwise search the Windows directory for relative names. */
+    /* Resolve the requested directory once before handing paths to shared C. */
     length=GetFullPathNameA(folder,sizeof(absolute),absolute,NULL);
     if(!length || length>=sizeof(absolute))return 0;
-    return blaze_path(s->path,sizeof(s->path),absolute,"Blz.ini") &&
-        blaze_path(s->score_path,sizeof(s->score_path),absolute,"BlzScr.ini") &&
-        blaze_path(s->controls_path,sizeof(s->controls_path),absolute,"BlzCtrl.ini");
+    return blaze_settings_paths(&s->storage,absolute);
 }
 /* Native full-screen modes are borderless, never change desktop resolution.
    The two legacy 320 modes retain scaled versus centered presentation. */
@@ -75,93 +73,15 @@ static int apply_display(void *context,int mode) {
     }
     s->mode=mode;InvalidateRect(s->window,NULL,FALSE);return 1;
 }
-/* Edit an owned temporary snapshot, preserving original keys, track mappings,
-   weapon definitions, ClearMode/ID and foreign sections. Each owner writes only
-   its own INI; the atomic replacement keeps a failed write from damaging it. */
-static int ini_begin(const char *path,char temporary[1240]) {
-    FILE *file;
-    snprintf(temporary,1240,"%s.%lu.tmp",path,(unsigned long)GetCurrentProcessId());
-    if(CopyFileA(path,temporary,FALSE))return 1;
-    if(GetLastError()!=ERROR_FILE_NOT_FOUND)return 0;
-    file=fopen(temporary,"wb");if(!file)return 0;
-    if(fclose(file)) {DeleteFileA(temporary);return 0;}return 1;
-}
-static int ini_integer(const char *path,const char *section,const char *key,int value) {
-    char text[32];snprintf(text,sizeof(text),"%d",value);
-    return WritePrivateProfileStringA(section,key,text,path)!=0;
-}
-static int ini_finish(const char *path,const char *temporary,int ok) {
-    /* The cache-flush form returns zero even on success. Individual key
-       writes above and atomic replacement below carry the failure result. */
-    WritePrivateProfileStringA(NULL,NULL,NULL,temporary);
-    if(ok)ok=MoveFileExA(temporary,path,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)!=0;
-    if(!ok)DeleteFileA(temporary);return ok;
-}
+/* Platform callbacks share one authoritative storage owner with SDL. */
 static int save_options(void *context,int level,int display,int music) {
-    WindowSettings *s=context;char temporary[1240];int ok;
-    if(s->path[0]) {
-        if(!ini_begin(s->path,temporary))return 0;
-        ok=ini_integer(temporary,"Enh","Level",level) && ini_integer(temporary,"Enh","Screen",display) && ini_integer(temporary,"Enh","MidPlayer",music);
-        if(!ini_finish(s->path,temporary,ok))return 0;
-    }
-    return 1;
+    WindowSettings *s=context;return blaze_settings_options(&s->storage,level,display,music);
 }
 static int save_progress(void *context,const int scores[5],const int modes[5],unsigned weapons) {
-    WindowSettings *s=context;char temporary[1240],key[32];unsigned i;int ok=1;
-    if(!s->score_path[0])return 1;
-    if(!ini_begin(s->score_path,temporary))return 0;
-    for(i=0;i<5 && ok;++i) {
-        snprintf(key,sizeof(key),"HiScore%u",i+1);ok=ini_integer(temporary,"Score",key,scores[i]);
-        if(ok) {snprintf(key,sizeof(key),"ClearMode%u",i+1);ok=ini_integer(temporary,"Score",key,modes[i]);}
-    }
-    for(i=0;i<11 && ok;++i) {snprintf(key,sizeof(key),"WeaponFlag%u",i);ok=ini_integer(temporary,"Score",key,(weapons>>i)&1);}
-    return ini_finish(s->score_path,temporary,ok);
+    WindowSettings *s=context;return blaze_settings_progress(&s->storage,scores,modes,weapons);
 }
-static int save_controls(WindowSettings *s) {
-    char temporary[1240];unsigned i;int ok;
-    if(!s->controls_path[0])return 1;
-    if(!ini_begin(s->controls_path,temporary))return 0;
-    ok=ini_integer(temporary,"Input","PadDevice",s->controls.device) && ini_integer(temporary,"Input","Deadzone",s->controls.deadzone);
-    for(i=0;i<BLAZE_BINDINGS && ok;++i)
-        ok=ini_integer(temporary,"Input",binding_keys[i],s->controls.keys[i]) && ini_integer(temporary,"Input",binding_buttons[i],s->controls.buttons[i]);
-    return ini_finish(s->controls_path,temporary,ok);
-}
-static int load_options(WindowSettings *s,BlazeApp *a) {
-    char line[160],key[40],raw[80],section[40];FILE *f;unsigned kind;
-    const char *paths[]={s->path,s->score_path,s->controls_path};
-    controls_defaults(&s->controls);
-    for(kind=0;kind<3;++kind)if(paths[kind][0]) {
-        section[0]=0;f=fopen(paths[kind],"rb");if(!f && errno!=ENOENT)return 0;
-        if(f) {
-            while(fgets(line,sizeof(line),f)) {
-                long value;char *end;unsigned i;
-                if(sscanf(line,"[%39[^]]]",section)==1)continue;
-                if(sscanf(line,"%39[^=]=%79[^\r\n]",key,raw)!=2)continue;
-                errno=0;value=strtol(raw,&end,10);
-                if(end==raw || errno==ERANGE || value<INT_MIN || value>INT_MAX)continue;
-                while(isspace((unsigned char)*end))++end;
-                if(*end)continue;
-                if(kind==0 && !strcmp(section,"Enh")) {
-                    if(!strcmp(key,"Level") && value>=0 && value<=2)a->level=(int)value;
-                    if(!strcmp(key,"Screen") && value>=0 && value<=4)a->display=(int)value;
-                    if(!strcmp(key,"MidPlayer") && value>=0 && value<=5)a->music=(int)value;
-                } else if(kind==2 && !strcmp(section,"Input"))controls_key(&s->controls,key,(int)value);
-                else if(kind==1 && !strcmp(section,"Score")) {
-                    char expected[32];
-                    for(i=0;i<5;++i) {snprintf(expected,sizeof(expected),"HiScore%u",i+1);
-                        if(!strcmp(key,expected) && value>=0)a->ranking_scores[i]=(int)value;}
-                    for(i=0;i<5;++i) {snprintf(expected,sizeof(expected),"ClearMode%u",i+1);
-                        if(!strcmp(key,expected))a->ranking_modes[i]=(int)value;}
-                    for(i=0;i<11;++i) {snprintf(expected,sizeof(expected),"WeaponFlag%u",i);
-                        if(!strcmp(key,expected) && (value==0 || value==1))a->loadout.weapons[i].enabled=(int)value;}
-                }
-            }
-            if(ferror(f)) {fclose(f);return 0;}if(fclose(f))return 0;
-        }
-    }
-    a->high_score=a->ranking_scores[0];
-    return 1;
-}
+static int save_controls(WindowSettings *s) {return blaze_settings_controls(&s->storage);}
+static int load_options(WindowSettings *s,BlazeApp *a) {return blaze_settings_load(&s->storage,a);}
 /* The application owns the retained framebuffer until after DestroyWindow.
    Repainting must work even while simulation is paused for focus/minimize. */
 static void present_frame(HWND window,HDC dc,const BlazeFrame *frame) {
@@ -303,10 +223,10 @@ int main(int argc,char **argv) {
         while (PeekMessageA(&message,NULL,0,0,PM_REMOVE)) {
             if (message.message==WM_QUIT) { quit=1; break; }
             if(!hidden && (message.message==WM_KEYDOWN || message.message==WM_SYSKEYDOWN) && message.wParam==VK_F10) {
-                BlazeControls previous=settings.controls;int edited;
-                blaze_app_pause(app,4,1);edited=controls_edit(window,&settings.controls,audio);blaze_app_pause(app,4,0);
+                BlazeControls previous=settings.storage.controls;int edited;
+                blaze_app_pause(app,4,1);edited=controls_edit(window,&settings.storage.controls,audio);blaze_app_pause(app,4,0);
                 if(edited<0 || (edited && !save_controls(&settings))) {
-                    settings.controls=previous;MessageBoxA(window,"Cannot save controls. Previous bindings retained.","Blaze controls",MB_OK|MB_ICONERROR);
+                    settings.storage.controls=previous;MessageBoxA(window,"Cannot save controls. Previous bindings retained.","Blaze controls",MB_OK|MB_ICONERROR);
                 }
                 pad.active=-1;pad.retry=0;clock.next=clock_ms(&frequency);previous_begin.QuadPart=0;continue;
             }
@@ -330,7 +250,7 @@ int main(int argc,char **argv) {
         }
         previous_begin=frame_begin;
         {
-            unsigned actions=script && frames<script_size/4?blaze_le32(script+(size_t)frames*4):hidden?0:controls_poll(window,&settings.controls,&pad);
+            unsigned actions=script && frames<script_size/4?blaze_le32(script+(size_t)frames*4):hidden?0:controls_poll(window,&settings.storage.controls,&pad);
             if (!blaze_app_tick(app,actions)) { exit_code=1; break; }
         }
         dc=GetDC(window);present_frame(window,dc,&app->frame);

@@ -100,3 +100,44 @@ jobs:
           path: source/dist/*
           if-no-files-found: error
           retention-days: 7
+  sdl-candidate:
+    name: SDL3 Windows ${{ matrix.architecture }} candidate
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture: [x86, x64]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.source_ref || github.sha }}
+      - name: Build SDL application and check shared settings, rendering and input
+        shell: pwsh
+        run: ./source/scripts/build.ps1 -Architecture '${{ matrix.architecture }}' -Backend SDL3 -Configuration Release -Tests -NoDeploy
+      - name: Stage SDL candidate
+        shell: pwsh
+        run: |
+          cmake --install source/build/windows-${{ matrix.architecture }}-sdl3 --config Release --prefix source/build/sdl-stage --component Runtime
+          if($LASTEXITCODE){throw 'SDL runtime installation failed.'}
+      - name: Run bounded menu/combat/pause/abort route
+        shell: pwsh
+        run: |
+          $exe=(Resolve-Path source/build/sdl-stage/blaze.exe).Path
+          $input=(Resolve-Path source/tests/fixtures/menu-combat.input).Path
+          $process=Start-Process $exe -ArgumentList '--hidden','--mute','--frames','901','--seed','1','--settings','none','--input-script',$input -WorkingDirectory $env:RUNNER_TEMP -WindowStyle Hidden -PassThru
+          try {
+            if(!$process.WaitForExit(55000)) {throw 'SDL gameplay check timed out.'}
+            if($process.ExitCode -ne 0) {throw "SDL gameplay check exited $($process.ExitCode)."}
+          } finally {
+            if(!$process.HasExited){$process.Kill()}
+            $process.Dispose()
+          }
+      - name: Package separate candidate (not a release runtime)
+        shell: pwsh
+        run: ./source/scripts/package-release.ps1 -Version sdl3-candidate -Platform 'windows-${{ matrix.architecture }}' -StageDirectory source/build/sdl-stage
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sdl3-candidate-windows-${{ matrix.architecture }}
+          path: source/dist/*
+          if-no-files-found: error
+          retention-days: 7

@@ -25,7 +25,9 @@ foreach($name in @('source','game-recomp','.git','dat/BlzCtrl.ini')){
     if(Test-Path -LiteralPath (Join-Path $assets $name)){throw "Private/source/user content in runtime package: $name"}
 }
 $bytes=[IO.File]::ReadAllBytes($exe)
-if(![Text.Encoding]::ASCII.GetString($bytes).Contains('BLAZE_NATIVE_C:')){throw 'Native application identity missing.'}
+$identity=[Text.Encoding]::ASCII.GetString($bytes)
+if(!$identity.Contains('BLAZE_NATIVE_C:')){throw 'Native application identity missing.'}
+if($identity.Contains('BLAZE_NATIVE_C: SDL3') -and !(Test-Path -LiteralPath (Join-Path $assets 'SDL3-LICENSE.txt'))){throw 'SDL3 candidate requires its license in the runtime package.'}
 if($Platform.StartsWith('windows-')){
     if($bytes.Length -lt 64 -or $bytes[0] -ne 77 -or $bytes[1] -ne 90){throw 'Invalid PE.'}
     $pe=[BitConverter]::ToInt32($bytes,60)

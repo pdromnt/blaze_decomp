@@ -83,17 +83,17 @@ int main(int argc,char **argv) {
           before.dmDisplayFrequency==after.dmDisplayFrequency && before.dmBitsPerPel==after.dmBitsPerPel);
     CHECK(GetTempPathA(sizeof(folder),folder) && GetTempFileNameA(folder,"blz",0,testdir));
     CHECK(DeleteFileA(testdir) && CreateDirectoryA(testdir,NULL));
-    CHECK(settings_location(&settings,folder,testdir,0));strcpy(temporary,settings.path);
+    CHECK(settings_location(&settings,folder,testdir,0));strcpy(temporary,settings.storage.path);
     {FILE *old=fopen(temporary,"wb");CHECK(old);
         CHECK(fputs("[Enh]\nLevel=2\nScreen=0\nMidPlayer=1\nTime=40\nWeaponName4=LIGHTNING\n[Foreign]\nKeep=untouched\n",old)>=0);CHECK(!fclose(old));}
-    {FILE *old=fopen(settings.score_path,"wb");CHECK(old);
+    {FILE *old=fopen(settings.storage.score_path,"wb");CHECK(old);
         CHECK(fputs("[Score]\nClearMode1=1\nClearMode2=2\nClearMode3=3\nClearMode4=0\nClearMode5=4\nID=unchanged\n",old)>=0);CHECK(!fclose(old));}
     CHECK(load_options(&settings,options));
     CHECK(options->level==2 && options->ranking_scores[0]==6000 && options->loadout.weapons[1].enabled);
     CHECK(options->ranking_modes[0]==1 && options->ranking_modes[4]==4);
-    controls_key(&settings.controls,"KeyFire",'A');controls_key(&settings.controls,"ButtonFire",32);
+    controls_key(&settings.storage.controls,"KeyFire",'A');controls_key(&settings.storage.controls,"ButtonFire",32);
     CHECK(save_controls(&settings) && save_options(&settings,2,0,1) && load_options(&settings,options));
-    CHECK(settings.controls.keys[4]=='A' && settings.controls.buttons[4]==32);
+    CHECK(settings.storage.controls.keys[4]=='A' && settings.storage.controls.buttons[4]==32);
     CHECK(options->level==2 && options->display==0 && options->music==1);
     CHECK(save_options(&settings,0,1,2) && load_options(&settings,options));
     CHECK(options->level==0 && options->display==1 && options->music==2);
@@ -101,11 +101,11 @@ int main(int argc,char **argv) {
         WindowSettings location={0};char expected[MAX_PATH],absolute[MAX_PATH],data[MAX_PATH];
         CHECK(blaze_path(data,sizeof(data),folder,"dat") && GetFullPathNameA(data,sizeof(absolute),absolute,NULL));
         CHECK(blaze_path(expected,sizeof(expected),absolute,"Blz.ini"));
-        CHECK(settings_location(&location,folder,NULL,0) && !strcmp(location.path,expected));
-        CHECK(settings_location(&location,folder,NULL,1) && !location.path[0]);
-        CHECK(settings_location(&location,folder,"none",0) && !location.path[0]);
-        CHECK(settings_location(&location,folder,testdir,1) && !strcmp(location.path,temporary));
-        CHECK(!strcmp(location.score_path,settings.score_path) && !strcmp(location.controls_path,settings.controls_path));
+        CHECK(settings_location(&location,folder,NULL,0) && !strcmp(location.storage.path,expected));
+        CHECK(settings_location(&location,folder,NULL,1) && !location.storage.path[0]);
+        CHECK(settings_location(&location,folder,"none",0) && !location.storage.path[0]);
+        CHECK(settings_location(&location,folder,testdir,1) && !strcmp(location.storage.path,temporary));
+        CHECK(!strcmp(location.storage.score_path,settings.storage.score_path) && !strcmp(location.storage.controls_path,settings.storage.controls_path));
     }
     {
         WindowSettings next={0};HANDLE lock;
@@ -118,7 +118,7 @@ int main(int argc,char **argv) {
         CHECK(blaze_app_tick(options,0) && options->state==BLAZE_LOADING);
         CHECK(blaze_app_open(reopened,argv[1],argv[2]) && load_options(&next,reopened));
         CHECK(reopened->loadout.weapons[3].enabled && reopened->level==0 && reopened->music==2);
-        CHECK(next.controls.keys[4]=='A' && next.controls.buttons[4]==32);
+        CHECK(next.storage.controls.keys[4]=='A' && next.storage.controls.buttons[4]==32);
         blaze_app_close(reopened);
         /* Ending score insertion persists immediately, before unlock/exit. */
         options->state=BLAZE_ENDING;options->tick=18;options->loadout.mode=4;
@@ -140,7 +140,7 @@ int main(int argc,char **argv) {
         CHECK(reopened->ranking_modes[0]==4 && reopened->ranking_modes[1]==1 && reopened->ranking_modes[4]==0);
         CHECK(reopened->level==1 && reopened->display==4 && reopened->music==2);
         blaze_app_close(reopened);
-        lock=CreateFileA(settings.score_path,GENERIC_READ,FILE_SHARE_READ,NULL,OPEN_EXISTING,0,NULL);
+        lock=CreateFileA(settings.storage.score_path,GENERIC_READ,FILE_SHARE_READ,NULL,OPEN_EXISTING,0,NULL);
         CHECK(lock!=INVALID_HANDLE_VALUE);
         options->loadout.weapons[9].enabled=1;
         options->ranking_scores[4]=3500;options->ranking_modes[4]=2;
@@ -154,7 +154,7 @@ int main(int argc,char **argv) {
         CHECK(reopened->loadout.weapons[9].enabled);
         CHECK(reopened->ranking_scores[4]==3500 && reopened->ranking_modes[4]==2);
         blaze_app_close(reopened);
-        {FILE *bad=fopen(settings.score_path,"ab");CHECK(bad);
+        {FILE *bad=fopen(settings.storage.score_path,"ab");CHECK(bad);
             CHECK(fputs("[Other]\nHiScore1=1\nClearMode1=0\n[Score]\nHiScore2=999999999999999999999\nWeaponFlag9=2\nHiScore1=1oops\nClearMode1=1oops\nClearMode2=999999999999999999999\n",bad)>=0);CHECK(!fclose(bad));}
         CHECK(blaze_app_open(reopened,argv[1],argv[2]) && load_options(&next,reopened));
         CHECK(reopened->ranking_scores[0]==7000 && reopened->ranking_scores[1]==6000 && reopened->loadout.weapons[9].enabled);
@@ -165,18 +165,18 @@ int main(int argc,char **argv) {
             CHECK(GetPrivateProfileIntA("Enh","Time",0,temporary)==40);
             CHECK(GetPrivateProfileStringA("Enh","WeaponName4","",value,sizeof(value),temporary) && !strcmp(value,"LIGHTNING"));
             CHECK(GetPrivateProfileStringA("Foreign","Keep","",value,sizeof(value),temporary) && !strcmp(value,"untouched"));
-            CHECK(GetPrivateProfileIntA("Score","ClearMode1",0,settings.score_path)==4);
-            CHECK(GetPrivateProfileStringA("Score","ID","",value,sizeof(value),settings.score_path) && !strcmp(value,"unchanged"));
+            CHECK(GetPrivateProfileIntA("Score","ClearMode1",0,settings.storage.score_path)==4);
+            CHECK(GetPrivateProfileStringA("Score","ID","",value,sizeof(value),settings.storage.score_path) && !strcmp(value,"unchanged"));
             CHECK(GetPrivateProfileStringA("Input","KeyFire","absent",value,sizeof(value),temporary) && !strcmp(value,"absent"));
             CHECK(GetPrivateProfileStringA("Score","HiScore1","absent",value,sizeof(value),temporary) && !strcmp(value,"absent"));
-            CHECK(GetPrivateProfileStringA("Enh","Level","absent",value,sizeof(value),settings.controls_path) && !strcmp(value,"absent"));
+            CHECK(GetPrivateProfileStringA("Enh","Level","absent",value,sizeof(value),settings.storage.controls_path) && !strcmp(value,"absent"));
         }
         /* Controls are independently atomic; a locked controls file must not
            affect options/progress or replace the previous bindings. */
-        lock=CreateFileA(settings.controls_path,GENERIC_READ,FILE_SHARE_READ,NULL,OPEN_EXISTING,0,NULL);CHECK(lock!=INVALID_HANDLE_VALUE);
-        controls_key(&settings.controls,"KeyFire",'B');
+        lock=CreateFileA(settings.storage.controls_path,GENERIC_READ,FILE_SHARE_READ,NULL,OPEN_EXISTING,0,NULL);CHECK(lock!=INVALID_HANDLE_VALUE);
+        controls_key(&settings.storage.controls,"KeyFire",'B');
         {int saved=save_controls(&settings);CloseHandle(lock);CHECK(!saved);}
-        CHECK(load_options(&settings,options) && settings.controls.keys[4]=='A');
+        CHECK(load_options(&settings,options) && settings.storage.controls.keys[4]=='A');
         CHECK(settings_location(&settings,folder,"none",0) && blaze_progress_save(options));
         CHECK(settings_location(&settings,folder,testdir,0));
     }
@@ -200,7 +200,7 @@ done:
     if(previous && previous!=HGDI_ERROR)SelectObject(dc,previous);
     if(bitmap)DeleteObject(bitmap);if(dc)DeleteDC(dc);
     if(window) {RemovePropA(window,"BlazeSettings");DestroyWindow(window);}UnregisterClassA("BlazeNative",GetModuleHandleA(NULL));
-    if(testdir[0]) {DeleteFileA(temporary);DeleteFileA(settings.score_path);DeleteFileA(settings.controls_path);RemoveDirectoryA(testdir);}
+    if(testdir[0]) {DeleteFileA(temporary);DeleteFileA(settings.storage.score_path);DeleteFileA(settings.storage.controls_path);RemoveDirectoryA(testdir);}
     if(reopened)blaze_app_close(reopened);free(reopened);
     if(options)blaze_app_close(options);free(options);free(frame);return result;
 }

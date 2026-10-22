@@ -22,6 +22,14 @@ ARM64 binaries. The local host currently has x86/x64 compilers, not ARM64 tools.
 requested checks. Existing root INIs remain untouched; absent ones are seeded
 from tracked defaults. The canonical original stays in private preservation.
 
+The SDL3 Windows candidate uses the same script with `-Backend SDL3`; its separate
+build directory is `source/build/windows-ARCH-sdl3`. SDL 3.4.18 is downloaded from
+the official release with a pinned SHA-256 and linked statically. The default
+remains `-Backend WIN32`. Both share one native settings writer; SDL currently
+retains WinMM audio and the Windows F10 editor, so Unix application builds still
+fail explicitly. Use `-NoDeploy` for comparison builds. To run one directly, pass
+`--assets` with the absolute game root; deployed/staged packages need no such flag.
+
 For a portable Windows runtime ZIP (use the matching platform label):
 
 ```powershell
@@ -44,9 +52,10 @@ cmake --build source/build/native --parallel 2
 ctest --test-dir source/build/native --output-on-failure
 ```
 
-These execute actual game/menu/lifecycle/mixer fixtures without a platform window
+These execute actual game/menu/lifecycle/mixer/shared-settings fixtures without a platform window
 or audio device. They are not a playable Unix application. Requesting
-`BLAZE_BUILD_APPLICATION=ON` fails explicitly until the SDL3 backend is connected.
+`BLAZE_BUILD_APPLICATION=ON` fails explicitly until the remaining portable media,
+controls editor and installed-user paths are connected.
 See [Portability](PORTABILITY.md) for the connected implementation order.
 
 Tests share immutable assets through a reusable build fixture tree with pristine
@@ -61,6 +70,13 @@ Windows jobs build/check/package applications and smoke the staged EXE from an
 unrelated working directory. Unix jobs currently check the core only, with no
 runtime artifact. These workflows have not yet executed on GitHub.
 Runner labels follow [GitHub's supported runners](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
+
+Separate x86/x64 SDL3 candidate jobs run renderer readback/virtual input checks
+and the existing 901-frame menu/combat/pause/abort route, then upload separately
+named candidate ZIPs. They retain WinMM and F10 dependencies and cannot satisfy
+the six-runtime release gate. Locally that route matched Win32 game/RNG state and
+the final framebuffer exactly; it is still bounded Stage 1 evidence, not a natural
+campaign or visible/controller/listening acceptance test.
 
 Manually dispatch **Build release** with an existing tag. It resolves the tag
 to a commit and calls the same build workflow with a real application required

@@ -2,6 +2,7 @@
 param(
     [ValidateSet('x86','x64','ARM64')][string]$Architecture='x64',
     [ValidateSet('Debug','RelWithDebInfo','Release')][string]$Configuration='RelWithDebInfo',
+    [ValidateSet('WIN32','SDL3')][string]$Backend='WIN32',
     [switch]$Tests,
     [switch]$NoDeploy
 )
@@ -14,10 +15,11 @@ if($cmake){$cmake=$cmake.Source}else{
     if(Test-Path -LiteralPath $vswhere){$cmake=& $vswhere -latest -products '*' -find 'Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe' | Select-Object -First 1}
 }
 if(!$cmake){throw 'CMake 3.24+ and Visual Studio C/C++ tools are required.'}
-$build=Join-Path $source ('build/windows-'+$Architecture.ToLowerInvariant())
+$suffix=if($Backend -eq 'SDL3'){'-sdl3'}else{''}
+$build=Join-Path $source ('build/windows-'+$Architecture.ToLowerInvariant()+$suffix)
 $platform=if($Architecture -eq 'x86'){'Win32'}else{$Architecture}
 $testOption=if($Tests){'ON'}else{'OFF'}
-& $cmake -S $source -B $build -A $platform "-DBUILD_TESTING=$testOption" -DBLAZE_BUILD_APPLICATION=ON
+& $cmake -S $source -B $build -A $platform "-DBUILD_TESTING=$testOption" -DBLAZE_BUILD_APPLICATION=ON "-DBLAZE_PLATFORM=$Backend"
 if($LASTEXITCODE){throw 'Configuration failed.'}
 & $cmake --build $build --config $Configuration --parallel 4
 if($LASTEXITCODE){throw 'Build failed.'}
