@@ -45,7 +45,13 @@ int main(int argc,char **argv) {
     CHECK(!strcmp(argv[2],"--dummy") || device);
     if(device) {
         int count=0;SDL_AudioDeviceID *ids=SDL_GetAudioPlaybackDevices(&count);SDL_free(ids);
+        SDL_AudioDeviceID probe;
         if(!count) {puts("No SDL playback device; real-device acceptance unavailable");result=77;goto done;}
+        /* ALSA can enumerate a generic default even on a host without a sound
+           card. Probe SDL directly before testing our stream implementation. */
+        probe=SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK,NULL);
+        if(!probe) {printf("SDL cannot open a playback device; real-device acceptance unavailable: %s\n",SDL_GetError());result=77;goto done;}
+        SDL_CloseAudioDevice(probe);
     }
     for(i=0;i<6;++i) {
         uint64_t before,after;unsigned j;
