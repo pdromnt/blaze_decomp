@@ -166,9 +166,17 @@ int main(int argc,char **argv) {
         CHECK(blaze_path(requested,sizeof(requested),directory,"casedir\\mixed.BIN"));
         CHECK(blaze_file_read(requested,&bytes,&size) && size==12 && !memcmp(bytes,"case-fixture",12));free(bytes);bytes=NULL;
 #ifndef _WIN32
-        CHECK(blaze_path(requested,sizeof(requested),file,"mixed.BIN"));f=blaze_fopen(requested,"wbx");CHECK(f);CHECK(!fclose(f));
-        CHECK(blaze_path(requested,sizeof(requested),file,"MIXED.BIN"));CHECK(!blaze_asset_open(requested));
-        CHECK(blaze_path(requested,sizeof(requested),file,"mixed.BIN"));CHECK(!blaze_file_remove(requested));
+        CHECK(blaze_path(requested,sizeof(requested),file,"mixed.BIN"));f=blaze_fopen(requested,"wbx");
+        if(f) {
+            CHECK(!fclose(f));
+            CHECK(blaze_path(requested,sizeof(requested),file,"MIXED.BIN"));CHECK(!blaze_asset_open(requested));
+            CHECK(blaze_path(requested,sizeof(requested),file,"mixed.BIN"));CHECK(!blaze_file_remove(requested));
+        } else {
+            /* A case-insensitive volume cannot contain both names. Exclusive
+               creation must fail without truncating the existing fixture. */
+            CHECK(errno==EEXIST);
+            CHECK(blaze_file_read(requested,&bytes,&size) && size==12 && !memcmp(bytes,"case-fixture",12));free(bytes);bytes=NULL;
+        }
 #endif
         CHECK(!blaze_file_remove(actual));
         CHECK(!blaze_file_remove(user.path) && !blaze_file_remove(user.score_path) && !blaze_file_remove(user.controls_path));
