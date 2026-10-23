@@ -167,7 +167,7 @@ int main(int argc,char **argv) {
     blaze_app_set_media(a,&audio->media);if(has_seed)blaze_random_begin(&a->random,seed);
     if(!SDL_CreateWindowAndRenderer("BLAZE",640,480,SDL_WINDOW_HIDDEN|SDL_WINDOW_RESIZABLE,&p->window,&p->renderer))goto done;
     p->texture=SDL_CreateTexture(p->renderer,SDL_PIXELFORMAT_RGBA32,SDL_TEXTUREACCESS_STREAMING,320,240);
-    if(!p->texture || !SDL_SetTextureScaleMode(p->texture,SDL_SCALEMODE_NEAREST))goto done;
+    if(!p->texture || !SDL_SetTextureScaleMode(p->texture,SDL_SCALEMODE_PIXELART))goto done;
     /* VSync cannot pace the original 25-tick simulation. */
     if(!SDL_SetRenderVSync(p->renderer,0))goto done;
     if(!display(p,a->display<2 || a->display==5?a->display:1))goto done;

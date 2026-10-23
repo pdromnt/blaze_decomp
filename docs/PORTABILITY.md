@@ -36,7 +36,7 @@ Do not add a second writable game state or redesign the renderer.
    and native Mac/Linux case-path tests pass.
 2. **SDL application, window/input/pacing.** SDL 3.4.18 is pinned/checksummed and
    statically linked in all six SDL application targets. Its window/renderer/streaming RGBA
-   texture, palette expansion, nearest-neighbor scaling, action masks and monotonic
+   texture, palette expansion, SDL pixel-art scaling, action masks and monotonic
    frame clock are connected. F10 now opens the SDL controls menu, with mouse/
    keyboard editing, legacy key-ID capture, controller selection/button binding,
    deadzone, Defaults/Save/Cancel and write-failure recovery. A temporary value is

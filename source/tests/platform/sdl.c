@@ -36,7 +36,7 @@ int main(int argc,char **argv) {
         CHECK(hwnd && GetClassLongPtrA(hwnd,GCLP_HICON));}
     #endif
     p->texture=SDL_CreateTexture(p->renderer,SDL_PIXELFORMAT_RGBA32,SDL_TEXTUREACCESS_STREAMING,320,240);
-    CHECK(p->texture && SDL_SetTextureScaleMode(p->texture,SDL_SCALEMODE_NEAREST));
+    CHECK(p->texture && SDL_SetTextureScaleMode(p->texture,SDL_SCALEMODE_PIXELART));
     frame->palette[4]=0x33;frame->palette[5]=0x66;frame->palette[6]=0xcc;
     frame->palette[8]=0x44;frame->palette[9]=0x22;frame->palette[10]=0x11;
     memset(frame->pixels,1,sizeof(frame->pixels));
