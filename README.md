@@ -6,9 +6,9 @@ A reconstruction of **BLAZE 2.00**, the side-scrolling shooter by **TEA**, writt
 in C with SDL3 support for Windows, Linux and macOS. The original game data is
 included alongside the source.
 
-The game is playable, but still under active testing. Bugs may remain, especially
-on platforms that have not had much hands-on testing yet. If you find one, please
-report your platform, build and the steps that triggered it.
+The game is playable and has been tested on Windows, Linux and macOS, including
+real hardware checks on Mac and Linux. Testing is ongoing; if you find a bug,
+please report your platform, build and the steps that triggered it.
 
 ## Running
 

@@ -4,15 +4,16 @@ Targets: Windows x86/x64/ARM64, Linux x64/ARM64, macOS ARM64. Native CI now buil
 checks and packages actual SDL applications. All six native targets pass.
 Gameplay frames match the Windows
 reference, and packages launch from extracted archives or a mounted DMG.
-This is headless CI evidence; real graphics/audio/controller and full campaign
-acceptance remain manual. The local Windows build still defaults to Win32.
+In addition to headless CI, the user confirmed Mac/Linux CI artifacts and hardware
+checks passed on 2026-10-23. Full campaign coverage remains separate. The local
+Windows build still defaults to Win32.
 
 ## Keep the game and its owners
 
 Preserve the software renderer, 320x240 indexed framebuffer, asset decoders,
 gameplay/RNG, `BlazeApp`, `BlazeWorld`, `BlazeMixer` and `BlazeMedia` callbacks.
 Platform migration changes presentation/devices/files, not recovered game behavior.
-Keep Win32 available as the comparison backend during hardware acceptance.
+Keep Win32 available as the comparison backend for regression checks.
 Do not add a second writable game state or redesign the renderer.
 
 ## Integrated subsystems and remaining acceptance
@@ -62,7 +63,8 @@ Do not add a second writable game state or redesign the renderer.
    startup; song changes never reload it. FIFO requests, intent-aware EOF after
    queue drain, loops and stop cleanup are connected. Muted diagnostics retain
    the earlier no-wall-clock-EOF behavior and original RNG/selection/credits.
-   CD requests report unsupported. Listening/timbre acceptance remains open.
+   CD requests report unsupported. The user accepted the raised MIDI level
+   (synth gain 0.5); exact original-synth timbre parity is not claimed.
 
    Static inspection of the 32 shipped MIDI files found 17 SMF-0, 15 SMF-1,
    PPQ division, 47 tempo events, GS/GM reset SysEx and controllers including
@@ -87,8 +89,8 @@ Do not add a second writable game state or redesign the renderer.
    `@rpath`. Build trees hard-link immutable assets and seed independent INIs;
    ordinary builds run without `--assets`. Windows x86/x64 are locally verified;
    all six native SDL targets pass CI execution.
-   Existing checks and bounded gameplay run on all targets. Next are manual
-   visible/audio/controller sessions and natural campaign acceptance.
+   Existing checks and bounded gameplay run on all targets. Mac/Linux package
+   and hardware checks are user-confirmed. Natural campaign acceptance remains.
    Audit integer overflow/shifts/conversions/alignment and pointer assumptions
    under GCC/Clang/MSVC; add focused coverage only for discovered issues. Windows
    ZIPs keep `blaze.exe`; Linux tar.gz keeps `blaze`; macOS packages `Blaze.app`

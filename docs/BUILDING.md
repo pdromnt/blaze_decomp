@@ -41,8 +41,9 @@ Architecture/identity/dependency checks run before packaging into source/dist/.
 
 Use native C11/C++ tools and CMake 3.24+. Linux SDK dependencies are listed in
 .github/workflows/build.yml. Linux x64/ARM64 and macOS ARM64 have passed native
-CI builds, checks, deterministic gameplay and packaged launches. Real display,
-audio and controller acceptance remains manual:
+CI builds, checks, deterministic gameplay and packaged launches. The CI packages
+also passed user testing on Mac and Linux, including hardware checks. See
+[Testing](TESTING.md) for remaining coverage:
 
 ```sh
 cmake -S source -B source/build/native -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DBLAZE_PLATFORM=SDL3

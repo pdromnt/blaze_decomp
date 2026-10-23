@@ -5,6 +5,13 @@ run. Extract the whole archive; the executable needs its adjacent assets/library
 These are development test builds. Automated checks do not establish a complete
 campaign or hardware/audio acceptance.
 
+User testing confirmed that the Mac and Linux CI packages work, including
+hardware checks (2026-10-23). The raised MIDI volume was also accepted. These are
+hands-on results in addition to automated CI; the exact tested builds, Linux
+architecture and device list were not recorded. Full-campaign coverage has not
+been confirmed. The checklist below remains useful for further testing and
+regressions; it does not mean every item is untested.
+
 All CI runtime artifacts use SDL3. In the development checkout, root blaze.exe
 remains the preserved Win32 comparison unless explicitly replaced by an SDL build.
 The local SDL executable is source/build/windows-x64-sdl3/bin/blaze.exe; run it

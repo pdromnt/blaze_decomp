@@ -691,8 +691,9 @@ mouse or accept unfocused gameplay input. Windowed/letterboxed/centered display
 and monotonic `Time` deadlines retain the existing simulation cadence. MIDI and
 F10 now use SDL-compatible owners described below. Unix application targets are
 enabled and pass native checks, deterministic gameplay and packaged launches on
-Linux x64/ARM64 and macOS ARM64, alongside Windows x86/x64/ARM64. Real hardware
-and full-campaign acceptance remain open. Win32 remains available for comparison.
+Linux x64/ARM64 and macOS ARM64, alongside Windows x86/x64/ARM64. Mac/Linux CI
+packages and hardware checks are user-confirmed (2026-10-23); full-campaign
+coverage remains open. Win32 remains available for comparison.
 
 Live Ghidra audit of the remaining legacy keys (2026-10-21):
 - `Clear`: 0x401e8c reads it once into application offset 0x98. No subsequent
@@ -762,7 +763,8 @@ Muted diagnostics parse slots without advancing wall-clock music, as before.
 Synth gain is 0.5 for the GeneralUser GS bank; MIDI controllers and SFX gain
 remain independent. An offline check of the first 30 seconds of all 32 shipped
 MIDI files at this gain found no full-scale samples (largest peak 0.838).
-This is bounded music-only headroom evidence; in-game balance remains a listening check.
+This is bounded music-only headroom evidence. The user accepted the louder
+in-game MIDI balance; this does not establish clipping headroom for every combat mix.
 
 Stop clears queued music and consumes the old player's deferred all-sound-off
 before another player can emit notes. Closing signals/joins the worker before
