@@ -74,7 +74,8 @@ static int initialize(BlazeSdlMusic *m) {
     SDL_AudioSpec spec={SDL_AUDIO_S16,2,RATE};
     m->settings=new_fluid_settings();if(!m->settings)return 0;
     fluid_settings_setnum(m->settings,"synth.sample-rate",RATE);
-    fluid_settings_setnum(m->settings,"synth.gain",0.2);
+    /* GeneralUser GS needs a higher music level against the original SFX. */
+    fluid_settings_setnum(m->settings,"synth.gain",0.5);
     fluid_settings_setint(m->settings,"synth.cpu-cores",1);
     fluid_settings_setint(m->settings,"synth.threadsafe-api",0);
     fluid_settings_setstr(m->settings,"player.timing-source","sample");

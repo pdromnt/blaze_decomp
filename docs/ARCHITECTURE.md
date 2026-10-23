@@ -759,6 +759,11 @@ Nonloop EOF uses the SMF tick boundary, then waits for SDL's queued input to dra
 it does not add FluidSynth's voice/reverb grace period to menu transitions.
 Muted diagnostics parse slots without advancing wall-clock music, as before.
 
+Synth gain is 0.5 for the GeneralUser GS bank; MIDI controllers and SFX gain
+remain independent. An offline check of the first 30 seconds of all 32 shipped
+MIDI files at this gain found no full-scale samples (largest peak 0.838).
+This is bounded music-only headroom evidence; in-game balance remains a listening check.
+
 Stop clears queued music and consumes the old player's deferred all-sound-off
 before another player can emit notes. Closing signals/joins the worker before
 destroying its stream, players, synth and settings; queued commands are released.
